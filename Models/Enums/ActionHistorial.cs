@@ -1,6 +1,6 @@
 namespace Models.Enums;
 
-public enum AccionHistorial
+public enum ActionHistorial
 {
     Creado,
     EstadoCambiado,
