@@ -1,4 +1,5 @@
 using DataAccess.Context;
+using DataAccess.Seeders;
 using Microsoft.EntityFrameworkCore;
 using Config;
 
@@ -36,6 +37,14 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Seed data
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ProxarDbContext>();
+    db.Database.Migrate();
+    DataSeeder.SeedData(db);
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
