@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Config/Config.csproj" />
+  <Project Path="DataAccess/DataAccess.csproj" />
+  <Project Path="Exceptions/Exceptions.csproj" />
+  <Project Path="Models/Models.csproj" />
+  <Project Path="ProxarAPI/ProxarAPI.csproj" />
+  <Project Path="Services/Services.csproj" />
+  <Project Path="Testing/Testing.csproj" />
+</Solution>
