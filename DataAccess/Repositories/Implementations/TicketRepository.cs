@@ -12,7 +12,7 @@ public class TicketRepository : GenericRepository<Ticket>, ITicketRepository
     {
     }
 
-    public async Task<IEnumerable<Ticket>> GetByStatusAsync(TicketStatus status)
+    public async Task<IEnumerable<Ticket>> GetByStatusAsync(TicketState status)
     {
         return await _dbSet
             .Include(t => t.Client)
