@@ -11,7 +11,7 @@ public class TicketHistory
     public Guid UserId { get; set; }
     
     // Properties
-    public AccionHistorial Action { get; set; }
+    public ActionHistorial Action { get; set; }
     public string? PreviousStatus { get; set; }
     public string? NewStatus { get; set; }
     public string? Comment { get; set; }
