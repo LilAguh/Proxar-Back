@@ -16,4 +16,10 @@ public static class DependencyInjection
 
         return services;
     }
+
+    public static IServiceCollection AddAutoMapperProfiles(this IServiceCollection services)
+    {
+        services.AddAutoMapper(cfg => cfg.AddProfile<AutoMapperProfile>());
+        return services;
+    }
 }
