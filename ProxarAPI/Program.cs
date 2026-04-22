@@ -1,11 +1,15 @@
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
+using Config;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Configurar DbContext
 builder.Services.AddDbContext<ProxarDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Registrar repositorios
+builder.Services.AddRepositories();
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -14,7 +18,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// CORS (configurar según necesites)
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
