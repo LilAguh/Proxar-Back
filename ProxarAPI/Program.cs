@@ -11,6 +11,9 @@ builder.Services.AddDbContext<ProxarDbContext>(options =>
 // Registrar repositorios
 builder.Services.AddRepositories();
 
+// Registrar servicios
+builder.Services.AddServices();
+
 // Registrar AutoMapper
 builder.Services.AddAutoMapperProfiles();
 
