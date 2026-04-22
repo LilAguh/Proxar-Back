@@ -3,7 +3,7 @@ namespace Models.Enums;
 public enum Priority
 {
     Baja,
-    Media,
+    Intermedia,
     Alta,
     Urgente
 }
