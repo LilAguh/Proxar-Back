@@ -15,7 +15,7 @@ public class Ticket
     // Properties
     public TicketType Type { get; set; }
     public TicketState Status { get; set; }
-    public Priority Priority { get; set; }
+    public Priority Priority { get; set; } = Priority.Intermedia;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? Address { get; set; }

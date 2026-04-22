@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Models;
-
 namespace DataAccess.Configurations;
 
 public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
@@ -30,8 +29,7 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.Property(t => t.Priority)
             .IsRequired()
             .HasConversion<string>()
-            .HasMaxLength(20)
-            .HasDefaultValue("Media");
+            .HasMaxLength(20);
 
         builder.Property(t => t.Title)
             .IsRequired()
