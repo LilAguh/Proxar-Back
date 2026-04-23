@@ -104,9 +104,8 @@ public class TicketsController : ControllerBase
         try
         {
             // TODO: Get user ID from JWT token
-            // Por ahora hardcodeamos un userId (deberías obtenerlo del token JWT)
-            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001"); 
-            
+            var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
             var ticket = await _ticketService.CreateTicketAsync(request, userId);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
         }
@@ -132,7 +131,7 @@ public class TicketsController : ControllerBase
         try
         {
             // TODO: Get user ID from JWT token
-            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
             
             var ticket = await _ticketService.UpdateTicketStatusAsync(id, request, userId);
             return Ok(ticket);
