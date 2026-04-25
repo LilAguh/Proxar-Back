@@ -5,22 +5,61 @@ using Models;
 
 namespace DataAccess.Repositories.Implementations;
 
-public class AccountRepository : GenericRepository<Account>, IAccountRepository
+public class AccountRepository : IAccountRepository
 {
-    public AccountRepository(ProxarDbContext context) : base(context)
+    private readonly ProxarDbContext _context;
+
+    public AccountRepository(ProxarDbContext context)
     {
+        _context = context;
     }
 
-    public async Task<IEnumerable<Account>> GetActiveAccountsAsync()
+    public async Task<Account?> GetByIdAsync(Guid id, Guid companyId)
     {
-        return await _dbSet
-            .Where(a => a.Active)
+        return await _context.Accounts
+            .FirstOrDefaultAsync(a => a.Id == id && a.CompanyId == companyId);
+    }
+
+    public async Task<IEnumerable<Account>> GetAllByCompanyAsync(Guid companyId)
+    {
+        return await _context.Accounts
+            .Where(a => a.CompanyId == companyId)
+            .OrderBy(a => a.Name)
             .ToListAsync();
     }
 
-    public async Task<Account?> GetByNameAsync(string name)
+    public async Task<IEnumerable<Account>> GetActiveByCompanyAsync(Guid companyId)
     {
-        return await _dbSet
-            .FirstOrDefaultAsync(a => a.Name.ToLower() == name.ToLower());
+        return await _context.Accounts
+            .Where(a => a.CompanyId == companyId && a.Active)
+            .OrderBy(a => a.Name)
+            .ToListAsync();
+    }
+
+    public async Task<Account> AddAsync(Account account)
+    {
+        await _context.Accounts.AddAsync(account);
+        await _context.SaveChangesAsync();
+        return account;
+    }
+
+    public async Task UpdateAsync(Account account)
+    {
+        account.ModifiedAt = DateTime.UtcNow;
+        _context.Accounts.Update(account);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy)
+    {
+        var account = await GetByIdAsync(id, companyId);
+        if (account == null)
+            throw new KeyNotFoundException("Cuenta no encontrada");
+
+        account.Active = false;
+        account.DeletedAt = DateTime.UtcNow;
+        account.DeletedBy = deletedBy;
+
+        await UpdateAsync(account);
     }
 }

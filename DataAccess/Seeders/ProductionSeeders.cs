@@ -11,26 +11,38 @@ public static class ProductionSeeder
     {
         Console.WriteLine("🌱 Production Seeder - Starting...");
 
-        // ============================================
-        // RESET DE SECUENCIAS (SIEMPRE)
-        // ============================================
         ResetSequences(context);
 
-        // Verificar si ya hay datos
-        if (context.Users.Any())
+        if (context.Companies.Any())
         {
-            Console.WriteLine("⚠️  Base de datos ya tiene datos. Skipping production seed.");
+            Console.WriteLine("⚠️  Ya existen empresas. Skipping seed.");
             return;
         }
 
         Console.WriteLine("🏭 Seeding production data...");
 
         // ============================================
-        // 1. USUARIOS REALES
+        // EMPRESA
+        // ============================================
+        var company = new Company
+        {
+            Id = Guid.Parse("c0000000-0000-0000-0000-000000000001"),
+            Name = "Aberturas Sagitario",
+            Slug = "aberturas-sagitario",
+            Active = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.Companies.Add(company);
+        Console.WriteLine("✅ Empresa creada: Aberturas Sagitario");
+
+        // ============================================
+        // USUARIOS
         // ============================================
         var admin = new User
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            CompanyId = company.Id,
             Name = "Agustín",
             Email = "admin@proxar.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
@@ -43,6 +55,7 @@ public static class ProductionSeeder
         var hermano = new User
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            CompanyId = company.Id,
             Name = "Hermano",
             Email = "hermano@proxar.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Hermano123!"),
@@ -55,6 +68,7 @@ public static class ProductionSeeder
         var padre = new User
         {
             Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            CompanyId = company.Id,
             Name = "Padre",
             Email = "padre@proxar.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Padre123!"),
@@ -68,11 +82,12 @@ public static class ProductionSeeder
         Console.WriteLine("✅ 3 usuarios creados");
 
         // ============================================
-        // 2. CUENTAS REALES (CON SALDO 0)
+        // CUENTAS
         // ============================================
         var cuentaEfectivo = new Account
         {
             Id = Guid.Parse("a1111111-1111-1111-1111-111111111111"),
+            CompanyId = company.Id,
             Name = "Caja Efectivo",
             Type = AccountType.Efectivo,
             CurrentBalance = 0,
@@ -84,6 +99,7 @@ public static class ProductionSeeder
         var cuentaBanco = new Account
         {
             Id = Guid.Parse("a2222222-2222-2222-2222-222222222222"),
+            CompanyId = company.Id,
             Name = "Banco Galicia",
             Type = AccountType.Banco,
             CurrentBalance = 0,
@@ -95,6 +111,7 @@ public static class ProductionSeeder
         var cuentaMercadoPago = new Account
         {
             Id = Guid.Parse("a3333333-3333-3333-3333-333333333333"),
+            CompanyId = company.Id,
             Name = "MercadoPago",
             Type = AccountType.MercadoPago,
             CurrentBalance = 0,
@@ -104,16 +121,11 @@ public static class ProductionSeeder
         };
 
         context.Accounts.AddRange(cuentaEfectivo, cuentaBanco, cuentaMercadoPago);
-        Console.WriteLine("✅ 3 cuentas creadas (saldo $0)");
+        Console.WriteLine("✅ 3 cuentas creadas");
 
         context.SaveChanges();
 
         Console.WriteLine("🎉 Production seeding completado!");
-        Console.WriteLine($"   - Usuarios: 3 (Admin, Hermano, Padre)");
-        Console.WriteLine($"   - Cuentas: 3 (Efectivo, Banco, MercadoPago)");
-        Console.WriteLine($"   - Clientes: 0 (se cargan manualmente)");
-        Console.WriteLine($"   - Tickets: 0 (se crean en uso real)");
-        Console.WriteLine($"   - Movimientos: 0 (se registran después)");
     }
 
     private static void ResetSequences(ProxarDbContext context)
