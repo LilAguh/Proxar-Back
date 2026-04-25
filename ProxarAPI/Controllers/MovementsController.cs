@@ -1,5 +1,5 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -8,7 +8,8 @@ namespace ProxarAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class MovementsController : ControllerBase
+[Authorize]
+public class MovementsController : BaseApiController
 {
     private readonly IBoxMovementService _movementService;
 
@@ -17,32 +18,8 @@ public class MovementsController : ControllerBase
         _movementService = movementService;
     }
 
-    private Guid GetCurrentUserId()
-    {
-        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
-        {
-            if (Guid.TryParse(userIdHeader, out var userId))
-            {
-                return userId;
-            }
-        }
-        return Guid.Parse("11111111-1111-1111-1111-111111111111");
-    }
-
-    private Guid GetCurrentCompanyId()
-    {
-        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
-        {
-            if (Guid.TryParse(companyIdHeader, out var companyId))
-            {
-                return companyId;
-            }
-        }
-        return Guid.Parse("00000000-0000-0000-0000-000000000001");
-    }
-
     /// <summary>
-    /// Get all movements
+    /// Get all movements of the company
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
@@ -97,33 +74,17 @@ public class MovementsController : ControllerBase
         return Ok(movements);
     }
 
-    // TODO: Implementar GetByDateRangeAsync en IBoxMovementService
-    // /// <summary>
-    // /// Get movements by date range
-    // /// </summary>
-    // [HttpGet("date-range")]
-    // [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
-    // public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByDateRange(
-    //     [FromQuery] DateTime startDate,
-    //     [FromQuery] DateTime endDate)
-    // {
-    //     var companyId = GetCurrentCompanyId();
-    //     var movements = await _movementService.GetByDateRangeAsync(startDate, endDate, companyId);
-    //     return Ok(movements);
-    // }
-
-    // NOTE: Account balances moved to AccountsController - use /api/accounts/balances
-
     /// <summary>
-    /// Register a new movement (income or expense)
+    /// Register new movement
     /// </summary>
     [HttpPost]
+    [ProducesResponseType(typeof(BoxMovementDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BoxMovementDto>> Register([FromBody] RegisterMovementRequest request)
     {
         try
         {
-            var userId = GetCurrentUserId();
-            var companyId = GetCurrentCompanyId();
+            var (userId, companyId) = GetCurrentUserAndCompany();
             var movement = await _movementService.RegisterMovementAsync(request, userId, companyId);
             return CreatedAtAction(nameof(GetById), new { id = movement.Id }, movement);
         }
@@ -138,6 +99,26 @@ public class MovementsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Delete movement (soft delete + revert balance)
+    /// </summary>
+    [HttpDelete("{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        try
+        {
+            var (userId, companyId) = GetCurrentUserAndCompany();
+            await _movementService.SoftDeleteMovementAsync(id, companyId, userId);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 }
