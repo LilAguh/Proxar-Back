@@ -18,6 +18,30 @@ public class UsersController : ControllerBase
         _authService = authService;
     }
 
+    private Guid GetCurrentUserId()
+    {
+        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
+        {
+            if (Guid.TryParse(userIdHeader, out var userId))
+            {
+                return userId;
+            }
+        }
+        return Guid.Parse("11111111-1111-1111-1111-111111111111");
+    }
+
+    private Guid GetCurrentCompanyId()
+    {
+        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
+        {
+            if (Guid.TryParse(companyIdHeader, out var companyId))
+            {
+                return companyId;
+            }
+        }
+        return Guid.Parse("00000000-0000-0000-0000-000000000001");
+    }
+
     /// <summary>
     /// Get all users
     /// </summary>
@@ -25,7 +49,8 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<UserDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
-        var users = await _authService.GetAllUsersAsync();
+        var companyId = GetCurrentCompanyId();
+        var users = await _authService.GetAllUsersByCompanyAsync(companyId);
         return Ok(users);
     }
 
@@ -39,7 +64,8 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var user = await _authService.GetUserByIdAsync(id);
+            var companyId = GetCurrentCompanyId();
+            var user = await _authService.GetUserByIdAsync(id, companyId);
             return Ok(user);
         }
         catch (KeyNotFoundException ex)
@@ -58,7 +84,8 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var user = await _authService.RegisterAsync(request);
+            var companyId = GetCurrentCompanyId();
+            var user = await _authService.RegisterUserAsync(request, companyId);
             return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
         }
         catch (InvalidOperationException ex)
@@ -78,7 +105,8 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var user = await _authService.UpdateUserAsync(id, request);
+            var companyId = GetCurrentCompanyId();
+            var user = await _authService.UpdateUserAsync(id, request, companyId);
             return Ok(user);
         }
         catch (KeyNotFoundException ex)
@@ -101,7 +129,9 @@ public class UsersController : ControllerBase
     {
         try
         {
-            await _authService.DeactivateUserAsync(id);
+            var companyId = GetCurrentCompanyId();
+            var deletedBy = GetCurrentUserId();
+            await _authService.DeactivateUserAsync(id, companyId, deletedBy);
             return NoContent();
         }
         catch (KeyNotFoundException ex)
