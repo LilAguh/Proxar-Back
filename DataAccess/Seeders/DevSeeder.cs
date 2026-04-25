@@ -24,11 +24,28 @@ public static class DevSeeder
         Console.WriteLine("🌱 Seeding data...");
 
         // ============================================
+        // 0. COMPANY (Multi-tenant)
+        // ============================================
+        var company = new Company
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            Name = "Aberturas Sagitario",
+            Slug = "aberturas-sagitario",
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        context.Companies.Add(company);
+        context.SaveChanges(); // Guardar company primero
+        Console.WriteLine("✅ Company creada");
+
+        // ============================================
         // 1. USUARIOS
         // ============================================
         var admin = new User
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+            CompanyId = company.Id,
             Name = "Agustín",
             Email = "admin@proxar.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
@@ -41,6 +58,7 @@ public static class DevSeeder
         var operador = new User
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+            CompanyId = company.Id,
             Name = "Hermano",
             Email = "operador@proxar.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Operador123!"),
@@ -53,6 +71,7 @@ public static class DevSeeder
         var padre = new User
         {
             Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            CompanyId = company.Id,
             Name = "Padre",
             Email = "padre@proxar.com",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Padre123!"),
@@ -70,6 +89,7 @@ public static class DevSeeder
         // ============================================
         var client1 = new Client
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("c1111111-1111-1111-1111-111111111111"),
             Name = "Juan Pérez",
             Phone = "351-1234567",
@@ -82,6 +102,7 @@ public static class DevSeeder
 
         var client2 = new Client
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("c2222222-2222-2222-2222-222222222222"),
             Name = "María González",
             Phone = "351-7654321",
@@ -94,6 +115,7 @@ public static class DevSeeder
 
         var client3 = new Client
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("c3333333-3333-3333-3333-333333333333"),
             Name = "Local Comercial Centro",
             Phone = "351-9876543",
@@ -106,6 +128,7 @@ public static class DevSeeder
 
         var client4 = new Client
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("c4444444-4444-4444-4444-444444444444"),
             Name = "Hotel Paradise",
             Phone = "351-5551234",
@@ -117,6 +140,7 @@ public static class DevSeeder
 
         var client5 = new Client
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("c5555555-5555-5555-5555-555555555555"),
             Name = "Ana Martínez",
             Phone = "351-4443322",
@@ -134,6 +158,7 @@ public static class DevSeeder
         // ============================================
         var cuentaEfectivo = new Account
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("a1111111-1111-1111-1111-111111111111"),
             Name = "Caja Efectivo",
             Type = AccountType.Efectivo,
@@ -145,6 +170,7 @@ public static class DevSeeder
 
         var cuentaBanco = new Account
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("a2222222-2222-2222-2222-222222222222"),
             Name = "Banco Galicia",
             Type = AccountType.Banco,
@@ -156,6 +182,7 @@ public static class DevSeeder
 
         var cuentaMercadoPago = new Account
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("a3333333-3333-3333-3333-333333333333"),
             Name = "MercadoPago",
             Type = AccountType.MercadoPago,
@@ -178,6 +205,7 @@ public static class DevSeeder
         // Ticket 1: Completado
         var ticket1 = new Ticket
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("b1111111-1111-1111-1111-111111111111"),
             Number = 1,
             ClientId = client1.Id,
@@ -197,6 +225,7 @@ public static class DevSeeder
         // Ticket 2: En Proceso
         var ticket2 = new Ticket
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("b2222222-2222-2222-2222-222222222222"),
             Number = 2,
             ClientId = client3.Id,
@@ -215,6 +244,7 @@ public static class DevSeeder
         // Ticket 3: Aprobado
         var ticket3 = new Ticket
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("b3333333-3333-3333-3333-333333333333"),
             Number = 3,
             ClientId = client4.Id,
@@ -233,6 +263,7 @@ public static class DevSeeder
         // Ticket 4: Presupuestado
         var ticket4 = new Ticket
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("b4444444-4444-4444-4444-444444444444"),
             Number = 4,
             ClientId = client2.Id,
@@ -251,6 +282,7 @@ public static class DevSeeder
         // Ticket 5: Nuevo
         var ticket5 = new Ticket
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("b5555555-5555-5555-5555-555555555555"),
             Number = 5,
             ClientId = client5.Id,
@@ -269,6 +301,7 @@ public static class DevSeeder
         // Ticket 6: En Visita
         var ticket6 = new Ticket
         {
+            CompanyId = company.Id,
             Id = Guid.Parse("b6666666-6666-6666-6666-666666666666"),
             Number = 6,
             ClientId = client1.Id,
@@ -292,6 +325,7 @@ public static class DevSeeder
         // ============================================
         var history1 = new TicketHistory
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             TicketId = ticket1.Id,
             UserId = admin.Id,
@@ -302,6 +336,7 @@ public static class DevSeeder
 
         var history2 = new TicketHistory
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             TicketId = ticket1.Id,
             UserId = operador.Id,
@@ -314,6 +349,7 @@ public static class DevSeeder
 
         var history3 = new TicketHistory
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             TicketId = ticket1.Id,
             UserId = operador.Id,
@@ -340,6 +376,7 @@ public static class DevSeeder
         // Movimiento 1: Ingreso por ticket completado
         var mov1 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 1,
             AccountId = cuentaEfectivo.Id,
@@ -357,6 +394,7 @@ public static class DevSeeder
         // Movimiento 2: Seña frente templado
         var mov2 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 2,
             AccountId = cuentaBanco.Id,
@@ -374,6 +412,7 @@ public static class DevSeeder
         // Movimiento 3: Seña aberturas hotel
         var mov3 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 3,
             AccountId = cuentaBanco.Id,
@@ -392,6 +431,7 @@ public static class DevSeeder
         // Movimiento 4: Compra de aluminio (egreso)
         var mov4 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 4,
             AccountId = cuentaBanco.Id,
@@ -410,6 +450,7 @@ public static class DevSeeder
         // Movimiento 5: Compra de vidrios (egreso)
         var mov5 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 5,
             AccountId = cuentaEfectivo.Id,
@@ -427,6 +468,7 @@ public static class DevSeeder
         // Movimiento 6: Pago de servicios (egreso)
         var mov6 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 6,
             AccountId = cuentaMercadoPago.Id,
@@ -444,6 +486,7 @@ public static class DevSeeder
         // Movimiento 7: Ingreso efectivo hoy
         var mov7 = new BoxMovement
         {
+            CompanyId = company.Id,
             Id = Guid.NewGuid(),
             Number = 7,
             AccountId = cuentaEfectivo.Id,

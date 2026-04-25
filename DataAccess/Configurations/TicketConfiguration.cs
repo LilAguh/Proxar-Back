@@ -56,12 +56,12 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(t => t.CreatedBy)
-            .WithMany(u => u.TicketCreated)
+            .WithMany(u => u.CreatedTickets)
             .HasForeignKey(t => t.CreatedById)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.AssignedTo)
-            .WithMany(u => u.TicketAssigned)
+            .WithMany(u => u.AssignedTickets)
             .HasForeignKey(t => t.AssignedToId)
             .OnDelete(DeleteBehavior.SetNull);
 
