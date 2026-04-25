@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -6,7 +7,8 @@ namespace ProxarAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class DashboardController : ControllerBase
+[Authorize]
+public class DashboardController : BaseApiController
 {
     private readonly IDashboardService _dashboardService;
 
@@ -15,20 +17,8 @@ public class DashboardController : ControllerBase
         _dashboardService = dashboardService;
     }
 
-    private Guid GetCurrentCompanyId()
-    {
-        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
-        {
-            if (Guid.TryParse(companyIdHeader, out var companyId))
-            {
-                return companyId;
-            }
-        }
-        return Guid.Parse("00000000-0000-0000-0000-000000000001");
-    }
-
     /// <summary>
-    /// Get dashboard summary
+    /// Get dashboard summary for the company
     /// </summary>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(DashboardSummaryDto), StatusCodes.Status200OK)]
