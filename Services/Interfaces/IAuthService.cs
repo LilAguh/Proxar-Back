@@ -6,10 +6,10 @@ namespace Services.Interfaces;
 public interface IAuthService
 {
     Task<AuthResponseDto> LoginAsync(LoginRequest request);
-    Task<UserDto> RegisterAsync(RegisterUserRequest request);
-    Task<UserDto> GetUserByIdAsync(Guid userId);
-    Task<IEnumerable<UserDto>> GetAllUsersAsync();
-    Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request);
-    Task DeactivateUserAsync(Guid userId);
-    Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
+    Task<UserDto> GetUserByIdAsync(Guid userId, Guid companyId);
+    Task<IEnumerable<UserDto>> GetAllUsersByCompanyAsync(Guid companyId);
+    Task<UserDto> RegisterUserAsync(RegisterUserRequest request, Guid companyId);
+    Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request, Guid companyId);
+    Task DeactivateUserAsync(Guid userId, Guid companyId, Guid deletedBy);
+    Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, Guid companyId);
 }
