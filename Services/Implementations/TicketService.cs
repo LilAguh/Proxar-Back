@@ -13,92 +13,159 @@ public class TicketService : ITicketService
     private readonly ITicketRepository _ticketRepository;
     private readonly IClientRepository _clientRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ITicketHistoryRepository _historyRepository;
     private readonly IMapper _mapper;
 
     public TicketService(
         ITicketRepository ticketRepository,
         IClientRepository clientRepository,
         IUserRepository userRepository,
+        ITicketHistoryRepository historyRepository,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
         _clientRepository = clientRepository;
         _userRepository = userRepository;
+        _historyRepository = historyRepository;
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<TicketDto>> GetAllTicketsAsync()
+    public async Task<TicketDto> GetByIdAsync(Guid id, Guid companyId)
     {
-        var tickets = await _ticketRepository.GetAllWithClientsAsync();
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
+        if (ticket == null)
+            throw new KeyNotFoundException("Ticket no encontrado");
+
+        return _mapper.Map<TicketDto>(ticket);
+    }
+
+    public async Task<TicketDetailDto> GetDetailsAsync(Guid id, Guid companyId)
+    {
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
+        if (ticket == null)
+            throw new KeyNotFoundException("Ticket no encontrado");
+
+        var history = await _historyRepository.GetByTicketIdAsync(id);
+
+        var dto = _mapper.Map<TicketDetailDto>(ticket);
+        dto.History = _mapper.Map<List<TicketHistoryDto>>(history);
+
+        return dto;
+    }
+
+    public async Task<IEnumerable<TicketDto>> GetAllByCompanyAsync(Guid companyId)
+    {
+        var tickets = await _ticketRepository.GetAllWithDetailsAsync(companyId);
         return _mapper.Map<IEnumerable<TicketDto>>(tickets);
     }
 
-    public async Task<TicketDto?> GetTicketByIdAsync(Guid id)
+    public async Task<IEnumerable<TicketDto>> GetByStatusAsync(TicketState status, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetByIdAsync(id);
-        return ticket != null ? _mapper.Map<TicketDto>(ticket) : null;
+        var tickets = await _ticketRepository.GetByStatusAsync(status, companyId);
+        return _mapper.Map<IEnumerable<TicketDto>>(tickets);
     }
 
-    public async Task<TicketDetailDto?> GetTicketWithDetailsAsync(Guid id)
+    public async Task<IEnumerable<TicketDto>> GetByClientAsync(Guid clientId, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetWithDetailsAsync(id);
-        return ticket != null ? _mapper.Map<TicketDetailDto>(ticket) : null;
+        var tickets = await _ticketRepository.GetByClientAsync(clientId, companyId);
+        return _mapper.Map<IEnumerable<TicketDto>>(tickets);
     }
 
-    public async Task<TicketDto> CreateTicketAsync(CreateTicketRequest request, Guid createdByUserId)
+    public async Task<IEnumerable<TicketDto>> GetByAssignedUserAsync(Guid userId, Guid companyId)
     {
-        // Verificar que el cliente existe
-        var client = await _clientRepository.GetByIdAsync(request.ClientId);
+        var tickets = await _ticketRepository.GetByAssignedUserAsync(userId, companyId);
+        return _mapper.Map<IEnumerable<TicketDto>>(tickets);
+    }
+
+    public async Task<TicketDto> CreateTicketAsync(CreateTicketRequest request, Guid userId, Guid companyId)
+    {
+        // Verificar que el cliente existe y pertenece a la empresa
+        var client = await _clientRepository.GetByIdAsync(request.ClientId, companyId);
         if (client == null)
-            throw new KeyNotFoundException($"Client with ID {request.ClientId} not found");
+            throw new KeyNotFoundException("Cliente no encontrado");
 
-        // Verificar que el usuario existe
-        var user = await _userRepository.GetByIdAsync(createdByUserId);
-        if (user == null)
-            throw new KeyNotFoundException($"User with ID {createdByUserId} not found");
+        // Verificar que el usuario asignado existe (si se especifica)
+        if (request.AssignedToId.HasValue)
+        {
+            var assignedUser = await _userRepository.GetByIdAsync(request.AssignedToId.Value, companyId);
+            if (assignedUser == null)
+                throw new KeyNotFoundException("Usuario asignado no encontrado");
+        }
 
-        var ticket = _mapper.Map<Ticket>(request);
-        ticket.CreatedById = createdByUserId;
-        ticket.AssignedToId = createdByUserId; // Auto-asignar al creador
-        ticket.Status = TicketState.Nuevo;
-        ticket.CreatedAt = DateTime.UtcNow;
-        ticket.LastUpdatedAt = DateTime.UtcNow;
+        var ticket = new Ticket
+        {
+            CompanyId = companyId,
+            ClientId = request.ClientId,
+            CreatedById = userId,
+            AssignedToId = request.AssignedToId,
+            Type = request.Type,
+            Status = TicketState.Nuevo,
+            Priority = request.Priority,
+            Title = request.Title,
+            Description = request.Description,
+            Address = request.Address,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            LastUpdatedAt = DateTime.UtcNow
+        };
 
         var createdTicket = await _ticketRepository.AddAsync(ticket);
 
-        // Crear entrada en historial
+        // Crear historial
         var history = new TicketHistory
         {
             TicketId = createdTicket.Id,
-            UserId = createdByUserId,
+            UserId = userId,
             Action = ActionHistorial.Creado,
             NewStatus = TicketState.Nuevo.ToString(),
             Timestamp = DateTime.UtcNow
         };
-
-        // Aquí necesitarías un repositorio de TicketHistory para guardarlo
-        // Por ahora lo dejamos así
+        await _historyRepository.AddAsync(history);
 
         return _mapper.Map<TicketDto>(createdTicket);
     }
 
-    public async Task<TicketDto> UpdateTicketStatusAsync(Guid id, UpdateTicketStatusRequest request, Guid userId)
+    public async Task<TicketDto> UpdateTicketAsync(Guid id, UpdateTicketRequest request, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetByIdAsync(id);
-        
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
         if (ticket == null)
-            throw new KeyNotFoundException($"Ticket with ID {id} not found");
+            throw new KeyNotFoundException("Ticket no encontrado");
+
+        ticket.Title = request.Title;
+        ticket.Description = request.Description;
+        ticket.Address = request.Address;
+        ticket.Priority = request.Priority;
+
+        if (request.AssignedToId.HasValue)
+        {
+            var assignedUser = await _userRepository.GetByIdAsync(request.AssignedToId.Value, companyId);
+            if (assignedUser == null)
+                throw new KeyNotFoundException("Usuario asignado no encontrado");
+            
+            ticket.AssignedToId = request.AssignedToId.Value;
+        }
+
+        await _ticketRepository.UpdateAsync(ticket);
+        return _mapper.Map<TicketDto>(ticket);
+    }
+
+    public async Task<TicketDto> UpdateTicketStatusAsync(Guid id, UpdateTicketStatusRequest request, Guid userId, Guid companyId)
+    {
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
+        if (ticket == null)
+            throw new KeyNotFoundException("Ticket no encontrado");
 
         var previousStatus = ticket.Status;
         ticket.Status = request.NewStatus;
-        ticket.LastUpdatedAt = DateTime.UtcNow;
 
         if (request.NewStatus == TicketState.Completado)
+        {
             ticket.CompletedAt = DateTime.UtcNow;
+        }
 
         await _ticketRepository.UpdateAsync(ticket);
 
-        // Crear entrada en historial
+        // Crear historial
         var history = new TicketHistory
         {
             TicketId = ticket.Id,
@@ -109,46 +176,13 @@ public class TicketService : ITicketService
             Comment = request.Comment,
             Timestamp = DateTime.UtcNow
         };
-
-        // Guardar historial (necesitarías repositorio)
-
-        return _mapper.Map<TicketDto>(ticket);
-    }
-
-    public async Task<TicketDto> AssignTicketAsync(Guid id, AssignTicketRequest request)
-    {
-        var ticket = await _ticketRepository.GetByIdAsync(id);
-        
-        if (ticket == null)
-            throw new KeyNotFoundException($"Ticket with ID {id} not found");
-
-        var user = await _userRepository.GetByIdAsync(request.UserId);
-        if (user == null)
-            throw new KeyNotFoundException($"User with ID {request.UserId} not found");
-
-        ticket.AssignedToId = request.UserId;
-        ticket.LastUpdatedAt = DateTime.UtcNow;
-
-        await _ticketRepository.UpdateAsync(ticket);
+        await _historyRepository.AddAsync(history);
 
         return _mapper.Map<TicketDto>(ticket);
     }
 
-    public async Task<IEnumerable<TicketDto>> GetTicketsByStatusAsync(TicketState status)
+    public async Task SoftDeleteTicketAsync(Guid id, Guid companyId, Guid deletedBy)
     {
-        var tickets = await _ticketRepository.GetByStatusAsync(status);
-        return _mapper.Map<IEnumerable<TicketDto>>(tickets);
-    }
-
-    public async Task<IEnumerable<TicketDto>> GetTicketsByAssignedUserAsync(Guid userId)
-    {
-        var tickets = await _ticketRepository.GetByAssignedUserAsync(userId);
-        return _mapper.Map<IEnumerable<TicketDto>>(tickets);
-    }
-
-    public async Task<IEnumerable<TicketDto>> GetTicketsByClientAsync(Guid clientId)
-    {
-        var tickets = await _ticketRepository.GetByClientAsync(clientId);
-        return _mapper.Map<IEnumerable<TicketDto>>(tickets);
+        await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
     }
 }
