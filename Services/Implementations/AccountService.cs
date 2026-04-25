@@ -1,7 +1,5 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
-using Models;
-using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
 
@@ -18,56 +16,21 @@ public class AccountService : IAccountService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<AccountDto>> GetAllAccountsAsync()
+    public async Task<IEnumerable<AccountDto>> GetAllByCompanyAsync(Guid companyId)
     {
-        var accounts = await _accountRepository.GetAllAsync();
+        var accounts = await _accountRepository.GetAllByCompanyAsync(companyId);
         return _mapper.Map<IEnumerable<AccountDto>>(accounts);
     }
 
-    public async Task<IEnumerable<AccountDto>> GetActiveAccountsAsync()
+    public async Task<IEnumerable<AccountDto>> GetActiveByCompanyAsync(Guid companyId)
     {
-        var accounts = await _accountRepository.GetActiveAccountsAsync();
+        var accounts = await _accountRepository.GetActiveByCompanyAsync(companyId);
         return _mapper.Map<IEnumerable<AccountDto>>(accounts);
     }
 
-    public async Task<AccountDto?> GetAccountByIdAsync(Guid id)
+    public async Task<Dictionary<Guid, decimal>> GetBalancesByCompanyAsync(Guid companyId)
     {
-        var account = await _accountRepository.GetByIdAsync(id);
-        return account != null ? _mapper.Map<AccountDto>(account) : null;
-    }
-
-    public async Task<AccountDto> CreateAccountAsync(CreateAccountRequest request)
-    {
-        var account = _mapper.Map<Account>(request);
-        account.CreatedAt = DateTime.UtcNow;
-        account.ModifiedAt = DateTime.UtcNow;
-
-        var createdAccount = await _accountRepository.AddAsync(account);
-        return _mapper.Map<AccountDto>(createdAccount);
-    }
-
-    public async Task<AccountDto> UpdateAccountAsync(Guid id, CreateAccountRequest request)
-    {
-        var account = await _accountRepository.GetByIdAsync(id);
-        
-        if (account == null)
-            throw new KeyNotFoundException($"Account with ID {id} not found");
-
-        account.Name = request.Name;
-        account.Type = request.Type;
-        account.ModifiedAt = DateTime.UtcNow;
-
-        await _accountRepository.UpdateAsync(account);
-        return _mapper.Map<AccountDto>(account);
-    }
-
-    public async Task DeleteAccountAsync(Guid id)
-    {
-        var account = await _accountRepository.GetByIdAsync(id);
-        
-        if (account == null)
-            throw new KeyNotFoundException($"Account with ID {id} not found");
-
-        await _accountRepository.DeleteAsync(account);
+        var accounts = await _accountRepository.GetActiveByCompanyAsync(companyId);
+        return accounts.ToDictionary(a => a.Id, a => a.CurrentBalance);
     }
 }

@@ -5,10 +5,10 @@ namespace Services.Interfaces;
 
 public interface IClientService
 {
-    Task<IEnumerable<ClientDto>> GetAllClientsAsync();
-    Task<ClientDto?> GetClientByIdAsync(Guid id);
-    Task<ClientDto> CreateClientAsync(CreateClientRequest request);
-    Task<ClientDto> UpdateClientAsync(Guid id, UpdateClientRequest request);
-    Task DeleteClientAsync(Guid id);
-    Task<IEnumerable<ClientDto>> SearchClientsByNameAsync(string name);
+    Task<ClientDto> GetByIdAsync(Guid id, Guid companyId);
+    Task<IEnumerable<ClientDto>> GetAllByCompanyAsync(Guid companyId);
+    Task<IEnumerable<ClientDto>> GetActiveByCompanyAsync(Guid companyId);
+    Task<ClientDto> CreateClientAsync(CreateClientRequest request, Guid companyId);
+    Task<ClientDto> UpdateClientAsync(Guid id, UpdateClientRequest request, Guid companyId);
+    Task SoftDeleteClientAsync(Guid id, Guid companyId, Guid deletedBy);
 }

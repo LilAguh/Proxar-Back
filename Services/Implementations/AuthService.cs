@@ -2,35 +2,51 @@ using AutoMapper;
 using DataAccess.Repositories.Interfaces;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Models;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Models;
 
 namespace Services.Implementations;
 
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly IMapper _mapper;
     private readonly JwtSettings _jwtSettings;
 
     public AuthService(
-        IUserRepository userRepository, 
+        IUserRepository userRepository,
+        ICompanyRepository companyRepository,
         IMapper mapper,
         IOptions<JwtSettings> jwtSettings)
     {
         _userRepository = userRepository;
+        _companyRepository = companyRepository;
         _mapper = mapper;
         _jwtSettings = jwtSettings.Value;
     }
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequest request)
     {
-        var user = await _userRepository.GetByEmailAsync(request.Email);
+        // Extraer companyId del email o usar slug
+        // Por ahora asumimos que el email viene con formato: user@company-slug
+        // O podríamos pasar companyId explícitamente en el request
+        
+        // TEMPORAL: buscar en todas las companies hasta encontrar el usuario
+        // En producción, el login debería recibir el companyId o slug
+        User? user = null;
+        var companies = await _companyRepository.GetAllActiveAsync();
+        
+        foreach (var company in companies)
+        {
+            user = await _userRepository.GetByEmailAsync(request.Email, company.Id);
+            if (user != null) break;
+        }
         
         if (user == null)
             throw new UnauthorizedAccessException("Email o contraseña incorrectos");
@@ -56,18 +72,34 @@ public class AuthService : IAuthService
         };
     }
 
-    public async Task<UserDto> RegisterAsync(RegisterUserRequest request)
+    public async Task<UserDto> GetUserByIdAsync(Guid userId, Guid companyId)
     {
-        // Verificar si el email ya existe
-        var existingUser = await _userRepository.GetByEmailAsync(request.Email);
+        var user = await _userRepository.GetByIdAsync(userId, companyId);
+        if (user == null)
+            throw new KeyNotFoundException("Usuario no encontrado");
+
+        return _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<IEnumerable<UserDto>> GetAllUsersByCompanyAsync(Guid companyId)
+    {
+        var users = await _userRepository.GetAllByCompanyAsync(companyId);
+        return _mapper.Map<IEnumerable<UserDto>>(users);
+    }
+
+    public async Task<UserDto> RegisterUserAsync(RegisterUserRequest request, Guid companyId)
+    {
+        // Verificar si el email ya existe en la empresa
+        var existingUser = await _userRepository.GetByEmailAsync(request.Email, companyId);
         if (existingUser != null)
-            throw new InvalidOperationException("El email ya está registrado");
+            throw new InvalidOperationException("El email ya está registrado en esta empresa");
 
         // Hash de la contraseña
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
         var user = new User
         {
+            CompanyId = companyId,
             Name = request.Name,
             Email = request.Email,
             PasswordHash = passwordHash,
@@ -81,60 +113,37 @@ public class AuthService : IAuthService
         return _mapper.Map<UserDto>(createdUser);
     }
 
-    public async Task<UserDto> GetUserByIdAsync(Guid userId)
+    public async Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request, Guid companyId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdAsync(userId, companyId);
         if (user == null)
             throw new KeyNotFoundException("Usuario no encontrado");
 
-        return _mapper.Map<UserDto>(user);
-    }
-
-    public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
-    {
-        var users = await _userRepository.GetAllAsync();
-        return _mapper.Map<IEnumerable<UserDto>>(users);
-    }
-
-    public async Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request)
-    {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            throw new KeyNotFoundException("Usuario no encontrado");
-
-        // Verificar si el email ya existe en otro usuario
+        // Verificar si el email ya existe en otro usuario de la empresa
         if (user.Email != request.Email)
         {
-            var existingUser = await _userRepository.GetByEmailAsync(request.Email);
+            var existingUser = await _userRepository.GetByEmailAsync(request.Email, companyId);
             if (existingUser != null)
-                throw new InvalidOperationException("El email ya está en uso");
+                throw new InvalidOperationException("El email ya está en uso en esta empresa");
         }
 
         user.Name = request.Name;
         user.Email = request.Email;
         user.Role = request.Role;
         user.Active = request.Active;
-        user.ModifiedAt = DateTime.UtcNow;
 
         await _userRepository.UpdateAsync(user);
         return _mapper.Map<UserDto>(user);
     }
 
-    public async Task DeactivateUserAsync(Guid userId)
+    public async Task DeactivateUserAsync(Guid userId, Guid companyId, Guid deletedBy)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            throw new KeyNotFoundException("Usuario no encontrado");
-
-        user.Active = false;
-        user.ModifiedAt = DateTime.UtcNow;
-
-        await _userRepository.UpdateAsync(user);
+        await _userRepository.SoftDeleteAsync(userId, companyId, deletedBy);
     }
 
-    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
+    public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, Guid companyId)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
+        var user = await _userRepository.GetByIdAsync(userId, companyId);
         if (user == null)
             throw new KeyNotFoundException("Usuario no encontrado");
 
@@ -145,8 +154,6 @@ public class AuthService : IAuthService
 
         // Actualizar contraseña
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.ModifiedAt = DateTime.UtcNow;
-
         await _userRepository.UpdateAsync(user);
     }
 
@@ -158,6 +165,7 @@ public class AuthService : IAuthService
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new Claim("CompanyId", user.CompanyId.ToString()),
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Name, user.Name),
             new Claim(ClaimTypes.Role, user.Role.ToString()),

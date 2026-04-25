@@ -9,6 +9,8 @@ public class AutoMapperProfile : Profile
 {
     public AutoMapperProfile()
     {
+        CreateMap<Company, CompanyDto>();
+        
         // Client mappings
         CreateMap<Client, ClientDto>();
         CreateMap<CreateClientRequest, Client>();

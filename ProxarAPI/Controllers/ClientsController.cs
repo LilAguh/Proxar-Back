@@ -16,6 +16,30 @@ public class ClientsController : ControllerBase
         _clientService = clientService;
     }
 
+    private Guid GetCurrentUserId()
+    {
+        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
+        {
+            if (Guid.TryParse(userIdHeader, out var userId))
+            {
+                return userId;
+            }
+        }
+        return Guid.Parse("11111111-1111-1111-1111-111111111111");
+    }
+
+    private Guid GetCurrentCompanyId()
+    {
+        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
+        {
+            if (Guid.TryParse(companyIdHeader, out var companyId))
+            {
+                return companyId;
+            }
+        }
+        return Guid.Parse("00000000-0000-0000-0000-000000000001");
+    }
+
     /// <summary>
     /// Get all clients
     /// </summary>
@@ -23,7 +47,8 @@ public class ClientsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<ClientDto>>> GetAll()
     {
-        var clients = await _clientService.GetAllClientsAsync();
+        var companyId = GetCurrentCompanyId();
+        var clients = await _clientService.GetActiveByCompanyAsync(companyId);
         return Ok(clients);
     }
 
@@ -35,27 +60,33 @@ public class ClientsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ClientDto>> GetById(Guid id)
     {
-        var client = await _clientService.GetClientByIdAsync(id);
-        
-        if (client == null)
-            return NotFound(new { message = $"Client with ID {id} not found" });
-
-        return Ok(client);
+        try
+        {
+            var companyId = GetCurrentCompanyId();
+            var client = await _clientService.GetByIdAsync(id, companyId);
+            return Ok(client);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
-    /// <summary>
-    /// Search clients by name
-    /// </summary>
-    [HttpGet("search")]
-    [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<ClientDto>>> Search([FromQuery] string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return BadRequest(new { message = "Search term is required" });
-
-        var clients = await _clientService.SearchClientsByNameAsync(name);
-        return Ok(clients);
-    }
+    // TODO: Implementar búsqueda por nombre en IClientService
+    // /// <summary>
+    // /// Search clients by name
+    // /// </summary>
+    // [HttpGet("search")]
+    // [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
+    // public async Task<ActionResult<IEnumerable<ClientDto>>> Search([FromQuery] string name)
+    // {
+    //     if (string.IsNullOrWhiteSpace(name))
+    //         return BadRequest(new { message = "Search term is required" });
+    //
+    //     var companyId = GetCurrentCompanyId();
+    //     var clients = await _clientService.SearchByNameAsync(name, companyId);
+    //     return Ok(clients);
+    // }
 
     /// <summary>
     /// Create a new client
@@ -67,7 +98,8 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var client = await _clientService.CreateClientAsync(request);
+            var companyId = GetCurrentCompanyId();
+            var client = await _clientService.CreateClientAsync(request, companyId);
             return CreatedAtAction(nameof(GetById), new { id = client.Id }, client);
         }
         catch (Exception ex)
@@ -87,7 +119,8 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var client = await _clientService.UpdateClientAsync(id, request);
+            var companyId = GetCurrentCompanyId();
+            var client = await _clientService.UpdateClientAsync(id, request, companyId);
             return Ok(client);
         }
         catch (KeyNotFoundException ex)
@@ -110,7 +143,9 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            await _clientService.DeleteClientAsync(id);
+            var companyId = GetCurrentCompanyId();
+            var deletedBy = GetCurrentUserId();
+            await _clientService.SoftDeleteClientAsync(id, companyId, deletedBy);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

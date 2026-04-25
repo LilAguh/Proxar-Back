@@ -23,15 +23,17 @@ public static class DependencyInjection
     }
 
     public static IServiceCollection AddServices(this IServiceCollection services)
-    {
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IClientService, ClientService>();
-        services.AddScoped<ITicketService, TicketService>();
-        services.AddScoped<IAccountService, AccountService>();
-        services.AddScoped<IBoxMovementService, BoxMovementService>();
+{
+    services.AddScoped<ICompanyService, CompanyService>(); // ← NUEVO
+    services.AddScoped<IAuthService, AuthService>();
+    services.AddScoped<IClientService, ClientService>();
+    services.AddScoped<ITicketService, TicketService>();
+    services.AddScoped<IAccountService, AccountService>();
+    services.AddScoped<IBoxMovementService, BoxMovementService>();
+    services.AddScoped<IDashboardService, DashboardService>();
 
-        return services;
-    }
+    return services;
+}
 
     public static IServiceCollection AddAutoMapperProfiles(this IServiceCollection services)
     {

@@ -29,6 +29,18 @@ public class MovementsController : ControllerBase
         return Guid.Parse("11111111-1111-1111-1111-111111111111");
     }
 
+    private Guid GetCurrentCompanyId()
+    {
+        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
+        {
+            if (Guid.TryParse(companyIdHeader, out var companyId))
+            {
+                return companyId;
+            }
+        }
+        return Guid.Parse("00000000-0000-0000-0000-000000000001");
+    }
+
     /// <summary>
     /// Get all movements
     /// </summary>
@@ -36,7 +48,8 @@ public class MovementsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetAll()
     {
-        var movements = await _movementService.GetAllMovementsAsync();
+        var companyId = GetCurrentCompanyId();
+        var movements = await _movementService.GetAllByCompanyAsync(companyId);
         return Ok(movements);
     }
 
@@ -48,12 +61,16 @@ public class MovementsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<BoxMovementDto>> GetById(Guid id)
     {
-        var movement = await _movementService.GetMovementByIdAsync(id);
-
-        if (movement == null)
-            return NotFound(new { message = $"Movement with ID {id} not found" });
-
-        return Ok(movement);
+        try
+        {
+            var companyId = GetCurrentCompanyId();
+            var movement = await _movementService.GetByIdAsync(id, companyId);
+            return Ok(movement);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -63,7 +80,8 @@ public class MovementsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByAccount(Guid accountId)
     {
-        var movements = await _movementService.GetMovementsByAccountAsync(accountId);
+        var companyId = GetCurrentCompanyId();
+        var movements = await _movementService.GetByAccountAsync(accountId, companyId);
         return Ok(movements);
     }
 
@@ -74,33 +92,27 @@ public class MovementsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByTicket(Guid ticketId)
     {
-        var movements = await _movementService.GetMovementsByTicketAsync(ticketId);
+        var companyId = GetCurrentCompanyId();
+        var movements = await _movementService.GetByTicketAsync(ticketId, companyId);
         return Ok(movements);
     }
 
-    /// <summary>
-    /// Get movements by date range
-    /// </summary>
-    [HttpGet("date-range")]
-    [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByDateRange(
-        [FromQuery] DateTime startDate,
-        [FromQuery] DateTime endDate)
-    {
-        var movements = await _movementService.GetMovementsByDateRangeAsync(startDate, endDate);
-        return Ok(movements);
-    }
+    // TODO: Implementar GetByDateRangeAsync en IBoxMovementService
+    // /// <summary>
+    // /// Get movements by date range
+    // /// </summary>
+    // [HttpGet("date-range")]
+    // [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
+    // public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByDateRange(
+    //     [FromQuery] DateTime startDate,
+    //     [FromQuery] DateTime endDate)
+    // {
+    //     var companyId = GetCurrentCompanyId();
+    //     var movements = await _movementService.GetByDateRangeAsync(startDate, endDate, companyId);
+    //     return Ok(movements);
+    // }
 
-    /// <summary>
-    /// Get account balances
-    /// </summary>
-    [HttpGet("balances")]
-    [ProducesResponseType(typeof(Dictionary<Guid, decimal>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<Dictionary<Guid, decimal>>> GetBalances()
-    {
-        var balances = await _movementService.GetAccountBalancesAsync();
-        return Ok(balances);
-    }
+    // NOTE: Account balances moved to AccountsController - use /api/accounts/balances
 
     /// <summary>
     /// Register a new movement (income or expense)
@@ -110,8 +122,9 @@ public class MovementsController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId(); // ← CAMBIO
-            var movement = await _movementService.RegisterMovementAsync(request, userId);
+            var userId = GetCurrentUserId();
+            var companyId = GetCurrentCompanyId();
+            var movement = await _movementService.RegisterMovementAsync(request, userId, companyId);
             return CreatedAtAction(nameof(GetById), new { id = movement.Id }, movement);
         }
         catch (KeyNotFoundException ex)
