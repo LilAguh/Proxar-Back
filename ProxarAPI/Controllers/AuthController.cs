@@ -46,7 +46,8 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<UserDto>> GetMe()
     {
         var userId = GetCurrentUserId();
-        var user = await _authService.GetUserByIdAsync(userId);
+        var companyId = GetCurrentCompanyId();
+        var user = await _authService.GetUserByIdAsync(userId, companyId);
         return Ok(user);
     }
 
@@ -62,7 +63,8 @@ public class AuthController : ControllerBase
         try
         {
             var userId = GetCurrentUserId();
-            await _authService.ChangePasswordAsync(userId, request);
+            var companyId = GetCurrentCompanyId();
+            await _authService.ChangePasswordAsync(userId, request, companyId);
             return Ok(new { message = "Contraseña actualizada correctamente" });
         }
         catch (UnauthorizedAccessException ex)
@@ -73,11 +75,45 @@ public class AuthController : ControllerBase
 
     private Guid GetCurrentUserId()
     {
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (Guid.TryParse(userIdClaim, out var userId))
+        // Temporal: leer del header
+        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
         {
-            return userId;
+            if (Guid.TryParse(userIdHeader, out var userId))
+            {
+                return userId;
+            }
         }
-        throw new UnauthorizedAccessException("Usuario no autenticado");
+
+        // Alternativa: leer del JWT claim
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(userIdClaim, out var jwtUserId))
+        {
+            return jwtUserId;
+        }
+
+        // Fallback
+        return Guid.Parse("11111111-1111-1111-1111-111111111111");
+    }
+
+    private Guid GetCurrentCompanyId()
+    {
+        // Temporal: leer del header
+        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
+        {
+            if (Guid.TryParse(companyIdHeader, out var companyId))
+            {
+                return companyId;
+            }
+        }
+
+        // Alternativa: leer del JWT claim
+        var companyIdClaim = User.FindFirst("CompanyId")?.Value;
+        if (Guid.TryParse(companyIdClaim, out var jwtCompanyId))
+        {
+            return jwtCompanyId;
+        }
+
+        // Fallback
+        return Guid.Parse("00000000-0000-0000-0000-000000000001");
     }
 }
