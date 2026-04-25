@@ -1,12 +1,16 @@
 using Models;
-using Models.Enums;
 
 namespace DataAccess.Repositories.Interfaces;
 
-public interface IBoxMovementRepository : IGenericRepository<BoxMovement>
+public interface IBoxMovementRepository
 {
-    Task<IEnumerable<BoxMovement>> GetByAccountAsync(Guid accountId);
-    Task<IEnumerable<BoxMovement>> GetByTicketAsync(Guid ticketId);
-    Task<IEnumerable<BoxMovement>> GetByDateRangeAsync(DateTime startDate, DateTime endDate);
-    Task<IEnumerable<BoxMovement>> GetByTypeAsync(MovementType type);
+    Task<BoxMovement?> GetByIdAsync(Guid id, Guid companyId);
+    Task<IEnumerable<BoxMovement>> GetAllByCompanyAsync(Guid companyId);
+    Task<IEnumerable<BoxMovement>> GetAllWithDetailsAsync(Guid companyId);
+    Task<IEnumerable<BoxMovement>> GetByAccountAsync(Guid accountId, Guid companyId);
+    Task<IEnumerable<BoxMovement>> GetByTicketAsync(Guid ticketId, Guid companyId);
+    Task<IEnumerable<BoxMovement>> GetByDateRangeAsync(DateTime from, DateTime to, Guid companyId);
+    Task<BoxMovement> AddAsync(BoxMovement movement);
+    Task UpdateAsync(BoxMovement movement);
+    Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy);
 }

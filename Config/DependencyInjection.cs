@@ -10,11 +10,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
+        services.AddScoped<ICompanyRepository, CompanyRepository>(); // ← NUEVO
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IBoxMovementRepository, BoxMovementRepository>();
+        services.AddScoped<ITicketHistoryRepository, TicketHistoryRepository>();
+
 
         return services;
     }
