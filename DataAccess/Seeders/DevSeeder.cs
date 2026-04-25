@@ -5,7 +5,7 @@ using Models.Enums;
 
 namespace DataAccess.Seeders;
 
-public static class DataSeeder
+public static class DevSeeder
 {
     public static void SeedData(ProxarDbContext context)
     {
