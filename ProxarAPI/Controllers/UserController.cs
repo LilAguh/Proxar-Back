@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -9,7 +9,7 @@ namespace ProxarAPI.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin")] // Solo Admin puede gestionar usuarios
-public class UsersController : ControllerBase
+public class UsersController : BaseApiController
 {
     private readonly IAuthService _authService;
 
@@ -18,32 +18,8 @@ public class UsersController : ControllerBase
         _authService = authService;
     }
 
-    private Guid GetCurrentUserId()
-    {
-        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
-        {
-            if (Guid.TryParse(userIdHeader, out var userId))
-            {
-                return userId;
-            }
-        }
-        return Guid.Parse("11111111-1111-1111-1111-111111111111");
-    }
-
-    private Guid GetCurrentCompanyId()
-    {
-        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
-        {
-            if (Guid.TryParse(companyIdHeader, out var companyId))
-            {
-                return companyId;
-            }
-        }
-        return Guid.Parse("00000000-0000-0000-0000-000000000001");
-    }
-
     /// <summary>
-    /// Get all users
+    /// Get all users of the company
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<UserDto>), StatusCodes.Status200OK)]
@@ -75,7 +51,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Create new user
+    /// Create new user (Admin only)
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
@@ -120,7 +96,7 @@ public class UsersController : ControllerBase
     }
 
     /// <summary>
-    /// Deactivate user
+    /// Deactivate user (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -129,9 +105,8 @@ public class UsersController : ControllerBase
     {
         try
         {
-            var companyId = GetCurrentCompanyId();
-            var deletedBy = GetCurrentUserId();
-            await _authService.DeactivateUserAsync(id, companyId, deletedBy);
+            var (currentUserId, companyId) = GetCurrentUserAndCompany();
+            await _authService.DeactivateUserAsync(id, companyId, currentUserId);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

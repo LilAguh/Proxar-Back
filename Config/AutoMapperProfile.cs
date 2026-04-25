@@ -21,7 +21,7 @@ public class AutoMapperProfile : Profile
 
         // Ticket mappings
         CreateMap<Ticket, TicketDto>();
-        CreateMap<Ticket, TicketDetailDto>();
+        CreateMap<Ticket, TicketDetailsDto>();
         CreateMap<CreateTicketRequest, Ticket>()
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => Models.Enums.TicketState.Nuevo))
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))

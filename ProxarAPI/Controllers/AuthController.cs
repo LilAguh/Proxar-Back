@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -8,7 +8,7 @@ namespace ProxarAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController : BaseApiController
 {
     private readonly IAuthService _authService;
 
@@ -43,12 +43,19 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     [Authorize]
     [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<UserDto>> GetMe()
     {
-        var userId = GetCurrentUserId();
-        var companyId = GetCurrentCompanyId();
-        var user = await _authService.GetUserByIdAsync(userId, companyId);
-        return Ok(user);
+        try
+        {
+            var (userId, companyId) = GetCurrentUserAndCompany();
+            var user = await _authService.GetUserByIdAsync(userId, companyId);
+            return Ok(user);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -58,12 +65,12 @@ public class AuthController : ControllerBase
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
     {
         try
         {
-            var userId = GetCurrentUserId();
-            var companyId = GetCurrentCompanyId();
+            var (userId, companyId) = GetCurrentUserAndCompany();
             await _authService.ChangePasswordAsync(userId, request, companyId);
             return Ok(new { message = "Contraseña actualizada correctamente" });
         }
@@ -71,49 +78,9 @@ public class AuthController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
-    }
-
-    private Guid GetCurrentUserId()
-    {
-        // Temporal: leer del header
-        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
+        catch (KeyNotFoundException ex)
         {
-            if (Guid.TryParse(userIdHeader, out var userId))
-            {
-                return userId;
-            }
+            return NotFound(new { message = ex.Message });
         }
-
-        // Alternativa: leer del JWT claim
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (Guid.TryParse(userIdClaim, out var jwtUserId))
-        {
-            return jwtUserId;
-        }
-
-        // Fallback
-        return Guid.Parse("11111111-1111-1111-1111-111111111111");
-    }
-
-    private Guid GetCurrentCompanyId()
-    {
-        // Temporal: leer del header
-        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
-        {
-            if (Guid.TryParse(companyIdHeader, out var companyId))
-            {
-                return companyId;
-            }
-        }
-
-        // Alternativa: leer del JWT claim
-        var companyIdClaim = User.FindFirst("CompanyId")?.Value;
-        if (Guid.TryParse(companyIdClaim, out var jwtCompanyId))
-        {
-            return jwtCompanyId;
-        }
-
-        // Fallback
-        return Guid.Parse("00000000-0000-0000-0000-000000000001");
     }
 }

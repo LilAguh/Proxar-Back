@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
@@ -7,7 +8,8 @@ namespace ProxarAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ClientsController : ControllerBase
+[Authorize]
+public class ClientsController : BaseApiController
 {
     private readonly IClientService _clientService;
 
@@ -16,36 +18,24 @@ public class ClientsController : ControllerBase
         _clientService = clientService;
     }
 
-    private Guid GetCurrentUserId()
-    {
-        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
-        {
-            if (Guid.TryParse(userIdHeader, out var userId))
-            {
-                return userId;
-            }
-        }
-        return Guid.Parse("11111111-1111-1111-1111-111111111111");
-    }
-
-    private Guid GetCurrentCompanyId()
-    {
-        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
-        {
-            if (Guid.TryParse(companyIdHeader, out var companyId))
-            {
-                return companyId;
-            }
-        }
-        return Guid.Parse("00000000-0000-0000-0000-000000000001");
-    }
-
     /// <summary>
-    /// Get all clients
+    /// Get all clients of the company
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<ClientDto>>> GetAll()
+    {
+        var companyId = GetCurrentCompanyId();
+        var clients = await _clientService.GetAllByCompanyAsync(companyId);
+        return Ok(clients);
+    }
+
+    /// <summary>
+    /// Get active clients of the company
+    /// </summary>
+    [HttpGet("active")]
+    [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<ClientDto>>> GetActive()
     {
         var companyId = GetCurrentCompanyId();
         var clients = await _clientService.GetActiveByCompanyAsync(companyId);
@@ -72,24 +62,8 @@ public class ClientsController : ControllerBase
         }
     }
 
-    // TODO: Implementar búsqueda por nombre en IClientService
-    // /// <summary>
-    // /// Search clients by name
-    // /// </summary>
-    // [HttpGet("search")]
-    // [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
-    // public async Task<ActionResult<IEnumerable<ClientDto>>> Search([FromQuery] string name)
-    // {
-    //     if (string.IsNullOrWhiteSpace(name))
-    //         return BadRequest(new { message = "Search term is required" });
-    //
-    //     var companyId = GetCurrentCompanyId();
-    //     var clients = await _clientService.SearchByNameAsync(name, companyId);
-    //     return Ok(clients);
-    // }
-
     /// <summary>
-    /// Create a new client
+    /// Create new client
     /// </summary>
     [HttpPost]
     [ProducesResponseType(typeof(ClientDto), StatusCodes.Status201Created)]
@@ -109,7 +83,7 @@ public class ClientsController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing client
+    /// Update client
     /// </summary>
     [HttpPut("{id}")]
     [ProducesResponseType(typeof(ClientDto), StatusCodes.Status200OK)]
@@ -134,7 +108,7 @@ public class ClientsController : ControllerBase
     }
 
     /// <summary>
-    /// Delete a client
+    /// Delete client (soft delete)
     /// </summary>
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -143,9 +117,8 @@ public class ClientsController : ControllerBase
     {
         try
         {
-            var companyId = GetCurrentCompanyId();
-            var deletedBy = GetCurrentUserId();
-            await _clientService.SoftDeleteClientAsync(id, companyId, deletedBy);
+            var (userId, companyId) = GetCurrentUserAndCompany();
+            await _clientService.SoftDeleteClientAsync(id, companyId, userId);
             return NoContent();
         }
         catch (KeyNotFoundException ex)

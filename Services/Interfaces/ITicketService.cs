@@ -7,7 +7,7 @@ namespace Services.Interfaces;
 public interface ITicketService
 {
     Task<TicketDto> GetByIdAsync(Guid id, Guid companyId);
-    Task<TicketDetailDto> GetDetailsAsync(Guid id, Guid companyId);
+    Task<TicketDetailsDto> GetDetailsAsync(Guid id, Guid companyId);
     Task<IEnumerable<TicketDto>> GetAllByCompanyAsync(Guid companyId);
     Task<IEnumerable<TicketDto>> GetByStatusAsync(TicketState status, Guid companyId);
     Task<IEnumerable<TicketDto>> GetByClientAsync(Guid clientId, Guid companyId);
