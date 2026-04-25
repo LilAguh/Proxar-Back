@@ -12,6 +12,16 @@ public class TicketRepository : GenericRepository<Ticket>, ITicketRepository
     {
     }
 
+    public async Task<IEnumerable<Ticket>> GetAllWithClientsAsync()
+    {
+        return await _dbSet
+            .Include(t => t.Client)
+            .Include(t => t.CreatedBy)
+            .Include(t => t.AssignedTo)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<Ticket>> GetByStatusAsync(TicketState status)
     {
         return await _dbSet

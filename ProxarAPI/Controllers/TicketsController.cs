@@ -4,7 +4,11 @@ using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
 
+
+
 namespace ProxarAPI.Controllers;
+
+
 
 [ApiController]
 [Route("api/[controller]")]
@@ -15,6 +19,21 @@ public class TicketsController : ControllerBase
     public TicketsController(ITicketService ticketService)
     {
         _ticketService = ticketService;
+    }
+
+    private Guid GetCurrentUserId()
+    {
+        // Temporal: leer del header
+        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
+        {
+            if (Guid.TryParse(userIdHeader, out var userId))
+            {
+                return userId;
+            }
+        }
+
+        // Fallback: Agustín admin
+        return Guid.Parse("11111111-1111-1111-1111-111111111111");
     }
 
     /// <summary>
@@ -37,7 +56,7 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<TicketDto>> GetById(Guid id)
     {
         var ticket = await _ticketService.GetTicketByIdAsync(id);
-        
+
         if (ticket == null)
             return NotFound(new { message = $"Ticket with ID {id} not found" });
 
@@ -53,7 +72,7 @@ public class TicketsController : ControllerBase
     public async Task<ActionResult<TicketDetailDto>> GetWithDetails(Guid id)
     {
         var ticket = await _ticketService.GetTicketWithDetailsAsync(id);
-        
+
         if (ticket == null)
             return NotFound(new { message = $"Ticket with ID {id} not found" });
 
@@ -103,9 +122,7 @@ public class TicketsController : ControllerBase
     {
         try
         {
-            // TODO: Get user ID from JWT token
-            var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-
+            var userId = GetCurrentUserId(); // ← CAMBIO
             var ticket = await _ticketService.CreateTicketAsync(request, userId);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
         }
@@ -130,9 +147,7 @@ public class TicketsController : ControllerBase
     {
         try
         {
-            // TODO: Get user ID from JWT token
-            var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-            
+            var userId = GetCurrentUserId(); // ← CAMBIO
             var ticket = await _ticketService.UpdateTicketStatusAsync(id, request, userId);
             return Ok(ticket);
         }
@@ -170,3 +185,4 @@ public class TicketsController : ControllerBase
         }
     }
 }
+

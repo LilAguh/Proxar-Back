@@ -17,6 +17,18 @@ public class MovementsController : ControllerBase
         _movementService = movementService;
     }
 
+    private Guid GetCurrentUserId()
+    {
+        if (Request.Headers.TryGetValue("X-User-Id", out var userIdHeader))
+        {
+            if (Guid.TryParse(userIdHeader, out var userId))
+            {
+                return userId;
+            }
+        }
+        return Guid.Parse("11111111-1111-1111-1111-111111111111");
+    }
+
     /// <summary>
     /// Get all movements
     /// </summary>
@@ -37,7 +49,7 @@ public class MovementsController : ControllerBase
     public async Task<ActionResult<BoxMovementDto>> GetById(Guid id)
     {
         var movement = await _movementService.GetMovementByIdAsync(id);
-        
+
         if (movement == null)
             return NotFound(new { message = $"Movement with ID {id} not found" });
 
@@ -72,7 +84,7 @@ public class MovementsController : ControllerBase
     [HttpGet("date-range")]
     [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByDateRange(
-        [FromQuery] DateTime startDate, 
+        [FromQuery] DateTime startDate,
         [FromQuery] DateTime endDate)
     {
         var movements = await _movementService.GetMovementsByDateRangeAsync(startDate, endDate);
@@ -94,15 +106,11 @@ public class MovementsController : ControllerBase
     /// Register a new movement (income or expense)
     /// </summary>
     [HttpPost]
-    [ProducesResponseType(typeof(BoxMovementDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<BoxMovementDto>> Register([FromBody] RegisterMovementRequest request)
     {
         try
         {
-            // TODO: Get user ID from JWT token
-            var userId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            
+            var userId = GetCurrentUserId(); // ← CAMBIO
             var movement = await _movementService.RegisterMovementAsync(request, userId);
             return CreatedAtAction(nameof(GetById), new { id = movement.Id }, movement);
         }

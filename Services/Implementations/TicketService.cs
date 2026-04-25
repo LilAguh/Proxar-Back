@@ -29,7 +29,7 @@ public class TicketService : ITicketService
 
     public async Task<IEnumerable<TicketDto>> GetAllTicketsAsync()
     {
-        var tickets = await _ticketRepository.GetAllAsync();
+        var tickets = await _ticketRepository.GetAllWithClientsAsync();
         return _mapper.Map<IEnumerable<TicketDto>>(tickets);
     }
 

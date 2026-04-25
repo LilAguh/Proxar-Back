@@ -5,6 +5,7 @@ namespace DataAccess.Repositories.Interfaces;
 
 public interface ITicketRepository : IGenericRepository<Ticket>
 {
+    Task<IEnumerable<Ticket>> GetAllWithClientsAsync();
     Task<IEnumerable<Ticket>> GetByStatusAsync(TicketState status);
     Task<IEnumerable<Ticket>> GetByAssignedUserAsync(Guid userId);
     Task<IEnumerable<Ticket>> GetByClientAsync(Guid clientId);

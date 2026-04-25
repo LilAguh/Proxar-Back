@@ -12,6 +12,16 @@ public class BoxMovementRepository : GenericRepository<BoxMovement>, IBoxMovemen
     {
     }
 
+    public override async Task<IEnumerable<BoxMovement>> GetAllAsync()
+    {
+        return await _dbSet
+            .Include(m => m.Account)
+            .Include(m => m.Ticket)
+            .Include(m => m.User)
+            .OrderByDescending(m => m.MovementDate)
+            .ToListAsync();
+    }
+
     public async Task<IEnumerable<BoxMovement>> GetByAccountAsync(Guid accountId)
     {
         return await _dbSet

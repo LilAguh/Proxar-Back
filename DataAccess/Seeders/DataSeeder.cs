@@ -1,4 +1,5 @@
 using DataAccess.Context;
+using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.Enums;
 
@@ -8,9 +9,17 @@ public static class DataSeeder
 {
     public static void SeedData(ProxarDbContext context)
     {
+        // ============================================
+        // RESET DE SECUENCIAS (SIEMPRE)
+        // ============================================
+        ResetSequences(context);
+
         // Verificar si ya hay datos
         if (context.Users.Any())
+        {
+            Console.WriteLine("⚠️  Base de datos ya tiene datos. Skipping seed.");
             return;
+        }
 
         Console.WriteLine("🌱 Seeding data...");
 
@@ -321,6 +330,9 @@ public static class DataSeeder
         // Guardar tickets e historial
         context.SaveChanges();
 
+        // Resetear la secuencia de Number para que el próximo ticket use el valor correcto
+        context.Database.ExecuteSqlRaw("SELECT setval(pg_get_serial_sequence('\"Tickets\"', 'Number'), (SELECT MAX(\"Number\") FROM \"Tickets\"))");
+
         // ============================================
         // 6. MOVIMIENTOS DE CAJA
         // ============================================
@@ -462,5 +474,35 @@ public static class DataSeeder
         Console.WriteLine($"   - Tickets: 6");
         Console.WriteLine($"   - Movimientos: 7");
         Console.WriteLine($"   - Saldo Total: ${cuentaEfectivo.CurrentBalance + cuentaBanco.CurrentBalance + cuentaMercadoPago.CurrentBalance:N0}");
+    }
+
+    private static void ResetSequences(ProxarDbContext context)
+    {
+        try
+        {
+            // Reset Tickets.Number sequence
+            context.Database.ExecuteSqlRaw(@"
+                SELECT setval(
+                    pg_get_serial_sequence('""Tickets""', 'Number'), 
+                    COALESCE((SELECT MAX(""Number"") FROM ""Tickets""), 0) + 1, 
+                    false
+                );
+            ");
+
+            // Reset BoxMovements.Number sequence
+            context.Database.ExecuteSqlRaw(@"
+                SELECT setval(
+                    pg_get_serial_sequence('""BoxMovements""', 'Number'), 
+                    COALESCE((SELECT MAX(""Number"") FROM ""BoxMovements""), 0) + 1, 
+                    false
+                );
+            ");
+
+            Console.WriteLine("✅ Secuencias reseteadas correctamente");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error reseteando secuencias: {ex.Message}");
+        }
     }
 }
