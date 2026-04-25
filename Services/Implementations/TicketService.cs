@@ -39,7 +39,7 @@ public class TicketService : ITicketService
         return _mapper.Map<TicketDto>(ticket);
     }
 
-    public async Task<TicketDetailDto> GetDetailsAsync(Guid id, Guid companyId)
+    public async Task<TicketDetailsDto> GetDetailsAsync(Guid id, Guid companyId)
     {
         var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
         if (ticket == null)
@@ -47,7 +47,7 @@ public class TicketService : ITicketService
 
         var history = await _historyRepository.GetByTicketIdAsync(id);
 
-        var dto = _mapper.Map<TicketDetailDto>(ticket);
+        var dto = _mapper.Map<TicketDetailsDto>(ticket);
         dto.History = _mapper.Map<List<TicketHistoryDto>>(history);
 
         return dto;
