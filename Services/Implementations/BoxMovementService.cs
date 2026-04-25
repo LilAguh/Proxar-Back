@@ -1,7 +1,6 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
 using Models;
-using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -27,79 +26,102 @@ public class BoxMovementService : IBoxMovementService
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<BoxMovementDto>> GetAllMovementsAsync()
+    public async Task<BoxMovementDto> GetByIdAsync(Guid id, Guid companyId)
     {
-        var movements = await _movementRepository.GetAllAsync();
+        var movement = await _movementRepository.GetByIdAsync(id, companyId);
+        if (movement == null)
+            throw new KeyNotFoundException("Movimiento no encontrado");
+
+        return _mapper.Map<BoxMovementDto>(movement);
+    }
+
+    public async Task<IEnumerable<BoxMovementDto>> GetAllByCompanyAsync(Guid companyId)
+    {
+        var movements = await _movementRepository.GetAllWithDetailsAsync(companyId);
         return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
     }
 
-    public async Task<BoxMovementDto?> GetMovementByIdAsync(Guid id)
+    public async Task<IEnumerable<BoxMovementDto>> GetByAccountAsync(Guid accountId, Guid companyId)
     {
-        var movement = await _movementRepository.GetByIdAsync(id);
-        return movement != null ? _mapper.Map<BoxMovementDto>(movement) : null;
+        var movements = await _movementRepository.GetByAccountAsync(accountId, companyId);
+        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
     }
 
-    public async Task<BoxMovementDto> RegisterMovementAsync(RegisterMovementRequest request, Guid userId)
+    public async Task<IEnumerable<BoxMovementDto>> GetByTicketAsync(Guid ticketId, Guid companyId)
+    {
+        var movements = await _movementRepository.GetByTicketAsync(ticketId, companyId);
+        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
+    }
+
+    public async Task<BoxMovementDto> RegisterMovementAsync(RegisterMovementRequest request, Guid userId, Guid companyId)
     {
         // Verificar que la cuenta existe
-        var account = await _accountRepository.GetByIdAsync(request.AccountId);
+        var account = await _accountRepository.GetByIdAsync(request.AccountId, companyId);
         if (account == null)
-            throw new KeyNotFoundException($"Account with ID {request.AccountId} not found");
+            throw new KeyNotFoundException("Cuenta no encontrada");
 
-        // Verificar que el ticket existe (si se proporcionó)
+        // Verificar que el ticket existe (si se especifica)
         if (request.TicketId.HasValue)
         {
-            var ticket = await _ticketRepository.GetByIdAsync(request.TicketId.Value);
+            var ticket = await _ticketRepository.GetByIdAsync(request.TicketId.Value, companyId);
             if (ticket == null)
-                throw new KeyNotFoundException($"Ticket with ID {request.TicketId} not found");
+                throw new KeyNotFoundException("Ticket no encontrado");
         }
 
-        // Validar saldo si es egreso
-        if (request.Type == MovementType.Egreso && account.CurrentBalance < request.Amount)
+        var movement = new BoxMovement
         {
-            throw new InvalidOperationException("Insufficient balance in account");
-        }
+            CompanyId = companyId,
+            AccountId = request.AccountId,
+            TicketId = request.TicketId,
+            UserId = userId,
+            Type = request.Type,
+            Amount = request.Amount,
+            Method = request.Method,
+            Concept = request.Concept,
+            VoucherNumber = request.VoucherNumber,
+            Observations = request.Observations,
+            MovementDate = request.MovementDate,
+            Active = true,
+            RegisteredAt = DateTime.UtcNow
+        };
 
-        var movement = _mapper.Map<BoxMovement>(request);
-        movement.UserId = userId;
-        movement.RegisteredAt = DateTime.UtcNow;
-
-        // Actualizar saldo de cuenta
-        if (request.Type == MovementType.Ingreso)
-            account.CurrentBalance += request.Amount;
-        else
-            account.CurrentBalance -= request.Amount;
-
-        account.ModifiedAt = DateTime.UtcNow;
-
-        // Guardar movimiento y actualizar cuenta
         var createdMovement = await _movementRepository.AddAsync(movement);
+
+        // Actualizar saldo de la cuenta
+        if (movement.Type == Models.Enums.MovementType.Ingreso)
+        {
+            account.CurrentBalance += movement.Amount;
+        }
+        else
+        {
+            account.CurrentBalance -= movement.Amount;
+        }
         await _accountRepository.UpdateAsync(account);
 
         return _mapper.Map<BoxMovementDto>(createdMovement);
     }
 
-    public async Task<IEnumerable<BoxMovementDto>> GetMovementsByAccountAsync(Guid accountId)
+    public async Task SoftDeleteMovementAsync(Guid id, Guid companyId, Guid deletedBy)
     {
-        var movements = await _movementRepository.GetByAccountAsync(accountId);
-        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
-    }
+        var movement = await _movementRepository.GetByIdAsync(id, companyId);
+        if (movement == null)
+            throw new KeyNotFoundException("Movimiento no encontrado");
 
-    public async Task<IEnumerable<BoxMovementDto>> GetMovementsByTicketAsync(Guid ticketId)
-    {
-        var movements = await _movementRepository.GetByTicketAsync(ticketId);
-        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
-    }
+        // Revertir saldo en la cuenta
+        var account = await _accountRepository.GetByIdAsync(movement.AccountId, companyId);
+        if (account != null)
+        {
+            if (movement.Type == Models.Enums.MovementType.Ingreso)
+            {
+                account.CurrentBalance -= movement.Amount;
+            }
+            else
+            {
+                account.CurrentBalance += movement.Amount;
+            }
+            await _accountRepository.UpdateAsync(account);
+        }
 
-    public async Task<IEnumerable<BoxMovementDto>> GetMovementsByDateRangeAsync(DateTime startDate, DateTime endDate)
-    {
-        var movements = await _movementRepository.GetByDateRangeAsync(startDate, endDate);
-        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
-    }
-
-    public async Task<Dictionary<Guid, decimal>> GetAccountBalancesAsync()
-    {
-        var accounts = await _accountRepository.GetActiveAccountsAsync();
-        return accounts.ToDictionary(a => a.Id, a => a.CurrentBalance);
+        await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
     }
 }
