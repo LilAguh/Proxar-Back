@@ -6,6 +6,11 @@ public class BoxMovement
 {
     public Guid Id { get; set; }
     public int Number { get; set; } // Autoincremental for display
+
+    // Multi-tenant
+    public Guid CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
+
     
     // Foreign Keys
     public Guid AccountId { get; set; }
@@ -23,6 +28,14 @@ public class BoxMovement
     // Timestamps
     public DateTime MovementDate { get; set; }
     public DateTime RegisteredAt { get; set; } = DateTime.UtcNow;
+
+
+    // Soft delete
+    public bool Active { get; set; } = true;
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
+
+    
 
     // Navigation properties
     public Account Account { get; set; } = null!;

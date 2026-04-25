@@ -41,22 +41,22 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired();
 
         // Relationships
-        builder.HasMany(u => u.TicketCreated)
+        builder.HasMany(u => u.CreatedTickets)
             .WithOne(t => t.CreatedBy)
             .HasForeignKey(t => t.CreatedById)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(u => u.TicketAssigned)
+        builder.HasMany(u => u.AssignedTickets)
             .WithOne(t => t.AssignedTo)
             .HasForeignKey(t => t.AssignedToId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasMany(u => u.ActionHistory)
+        builder.HasMany(u => u.TicketHistories)
             .WithOne(h => h.User)
             .HasForeignKey(h => h.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(u => u.Movements)
+        builder.HasMany(u => u.BoxMovements)
             .WithOne(m => m.User)
             .HasForeignKey(m => m.UserId)
             .OnDelete(DeleteBehavior.Restrict);

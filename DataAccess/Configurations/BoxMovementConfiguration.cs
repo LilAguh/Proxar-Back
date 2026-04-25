@@ -59,7 +59,7 @@ public class BoxMovementConfiguration : IEntityTypeConfiguration<BoxMovement>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(m => m.User)
-            .WithMany(u => u.Movements)
+            .WithMany(u => u.BoxMovements)
             .HasForeignKey(m => m.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 

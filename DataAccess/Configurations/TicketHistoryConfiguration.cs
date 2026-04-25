@@ -31,7 +31,7 @@ public class TicketHistoryConfiguration : IEntityTypeConfiguration<TicketHistory
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(h => h.User)
-            .WithMany(u => u.ActionHistory)
+            .WithMany(u => u.TicketHistories)
             .HasForeignKey(h => h.UserId)
             .OnDelete(DeleteBehavior.Restrict);
 

@@ -6,6 +6,11 @@ public class Ticket
 {
     public Guid Id { get; set; }
     public int Number { get; set; } // Autoincremental for display
+
+
+     // Multi-tenant
+    public Guid CompanyId { get; set; }
+    public Company Company { get; set; } = null!;
     
     // Foreign Keys
     public Guid ClientId { get; set; }
@@ -24,6 +29,13 @@ public class Ticket
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedAt { get; set; }
+
+
+
+    // Soft delete
+    public bool Active { get; set; } = true;
+    public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
 
     // Navigation properties
     public Client Client { get; set; } = null!;
