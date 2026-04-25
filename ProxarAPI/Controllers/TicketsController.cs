@@ -36,6 +36,21 @@ public class TicketsController : ControllerBase
         return Guid.Parse("11111111-1111-1111-1111-111111111111");
     }
 
+    private Guid GetCurrentCompanyId()
+    {
+        // Temporal: leer del header
+        if (Request.Headers.TryGetValue("X-Company-Id", out var companyIdHeader))
+        {
+            if (Guid.TryParse(companyIdHeader, out var companyId))
+            {
+                return companyId;
+            }
+        }
+
+        // Fallback: Aberturas Sagitario
+        return Guid.Parse("00000000-0000-0000-0000-000000000001");
+    }
+
     /// <summary>
     /// Get all tickets
     /// </summary>
@@ -43,7 +58,8 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TicketDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<TicketDto>>> GetAll()
     {
-        var tickets = await _ticketService.GetAllTicketsAsync();
+        var companyId = GetCurrentCompanyId();
+        var tickets = await _ticketService.GetAllByCompanyAsync(companyId);
         return Ok(tickets);
     }
 
@@ -55,12 +71,16 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TicketDto>> GetById(Guid id)
     {
-        var ticket = await _ticketService.GetTicketByIdAsync(id);
-
-        if (ticket == null)
-            return NotFound(new { message = $"Ticket with ID {id} not found" });
-
-        return Ok(ticket);
+        try
+        {
+            var companyId = GetCurrentCompanyId();
+            var ticket = await _ticketService.GetByIdAsync(id, companyId);
+            return Ok(ticket);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -71,12 +91,16 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<TicketDetailDto>> GetWithDetails(Guid id)
     {
-        var ticket = await _ticketService.GetTicketWithDetailsAsync(id);
-
-        if (ticket == null)
-            return NotFound(new { message = $"Ticket with ID {id} not found" });
-
-        return Ok(ticket);
+        try
+        {
+            var companyId = GetCurrentCompanyId();
+            var ticket = await _ticketService.GetDetailsAsync(id, companyId);
+            return Ok(ticket);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -86,7 +110,8 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TicketDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<TicketDto>>> GetByStatus(TicketState status)
     {
-        var tickets = await _ticketService.GetTicketsByStatusAsync(status);
+        var companyId = GetCurrentCompanyId();
+        var tickets = await _ticketService.GetByStatusAsync(status, companyId);
         return Ok(tickets);
     }
 
@@ -97,7 +122,8 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TicketDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<TicketDto>>> GetByAssignedUser(Guid userId)
     {
-        var tickets = await _ticketService.GetTicketsByAssignedUserAsync(userId);
+        var companyId = GetCurrentCompanyId();
+        var tickets = await _ticketService.GetByAssignedUserAsync(userId, companyId);
         return Ok(tickets);
     }
 
@@ -108,7 +134,8 @@ public class TicketsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<TicketDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<TicketDto>>> GetByClient(Guid clientId)
     {
-        var tickets = await _ticketService.GetTicketsByClientAsync(clientId);
+        var companyId = GetCurrentCompanyId();
+        var tickets = await _ticketService.GetByClientAsync(clientId, companyId);
         return Ok(tickets);
     }
 
@@ -122,8 +149,9 @@ public class TicketsController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId(); // ← CAMBIO
-            var ticket = await _ticketService.CreateTicketAsync(request, userId);
+            var userId = GetCurrentUserId();
+            var companyId = GetCurrentCompanyId();
+            var ticket = await _ticketService.CreateTicketAsync(request, userId, companyId);
             return CreatedAtAction(nameof(GetById), new { id = ticket.Id }, ticket);
         }
         catch (KeyNotFoundException ex)
@@ -147,8 +175,9 @@ public class TicketsController : ControllerBase
     {
         try
         {
-            var userId = GetCurrentUserId(); // ← CAMBIO
-            var ticket = await _ticketService.UpdateTicketStatusAsync(id, request, userId);
+            var userId = GetCurrentUserId();
+            var companyId = GetCurrentCompanyId();
+            var ticket = await _ticketService.UpdateTicketStatusAsync(id, request, userId, companyId);
             return Ok(ticket);
         }
         catch (KeyNotFoundException ex)
@@ -162,17 +191,18 @@ public class TicketsController : ControllerBase
     }
 
     /// <summary>
-    /// Assign ticket to a user
+    /// Update ticket
     /// </summary>
-    [HttpPut("{id}/assign")]
+    [HttpPut("{id}")]
     [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<TicketDto>> Assign(Guid id, [FromBody] AssignTicketRequest request)
+    public async Task<ActionResult<TicketDto>> Update(Guid id, [FromBody] UpdateTicketRequest request)
     {
         try
         {
-            var ticket = await _ticketService.AssignTicketAsync(id, request);
+            var companyId = GetCurrentCompanyId();
+            var ticket = await _ticketService.UpdateTicketAsync(id, request, companyId);
             return Ok(ticket);
         }
         catch (KeyNotFoundException ex)
