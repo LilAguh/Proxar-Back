@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.Json.Serialization;
 using Config;
 using Models;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +54,12 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
     };
 });
+
+// Después de builder.Services.AddControllers()
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddFluentValidationClientsideAdapters();
+builder.Services.AddValidatorsFromAssemblyContaining<Services.Validators.LoginRequestValidator>();
+
 
 builder.Services.AddAuthorization();
 
@@ -119,7 +127,17 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ProxarDbContext>();
-    DataAccess.Seeders.DataSeeder.SeedData(context);
+    
+    if (app.Environment.IsDevelopment())
+    {
+        Console.WriteLine("🔧 DEVELOPMENT MODE - Using DevSeeder");
+        DataAccess.Seeders.DevSeeder.SeedData(context);
+    }
+    else
+    {
+        Console.WriteLine("🏭 PRODUCTION MODE - Using ProductionSeeder");
+        DataAccess.Seeders.ProductionSeeder.SeedData(context);
+    }
 }
 
 app.Run();
