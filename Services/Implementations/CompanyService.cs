@@ -58,7 +58,7 @@ public class CompanyService : ICompanyService
             CreatedAt = DateTime.UtcNow
         };
 
-        var created = await _companyRepository.AddAsync(company);
+        var created = await _companyRepository.CreateAsync(company);
         return _mapper.Map<CompanyDto>(created);
     }
 

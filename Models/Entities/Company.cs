@@ -9,6 +9,7 @@ public class Company
     public bool Active { get; set; } = true;
     public DateTime CreatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
+    public Guid? DeletedBy { get; set; }
     
     // Navigation
     public ICollection<User> Users { get; set; } = new List<User>();

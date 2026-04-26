@@ -17,45 +17,46 @@ public class CompanyRepository : ICompanyRepository
     public async Task<Company?> GetByIdAsync(Guid id)
     {
         return await _context.Companies
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .FirstOrDefaultAsync(c => c.Id == id && c.Active);
     }
 
     public async Task<Company?> GetBySlugAsync(string slug)
     {
         return await _context.Companies
-            .FirstOrDefaultAsync(c => c.Slug == slug.ToLower());
+            .FirstOrDefaultAsync(c => c.Slug == slug && c.Active);
     }
 
     public async Task<IEnumerable<Company>> GetAllActiveAsync()
     {
         return await _context.Companies
+            .Where(c => c.Active)
             .OrderBy(c => c.Name)
             .ToListAsync();
     }
 
-    public async Task<Company> AddAsync(Company company)
+    public async Task<Company> CreateAsync(Company company)
     {
-        company.Slug = company.Slug.ToLower().Trim();
-        await _context.Companies.AddAsync(company);
+        _context.Companies.Add(company);
         await _context.SaveChangesAsync();
         return company;
     }
 
-    public async Task UpdateAsync(Company company)
+    public async Task<Company> UpdateAsync(Company company)
     {
         _context.Companies.Update(company);
         await _context.SaveChangesAsync();
+        return company;
     }
 
     public async Task SoftDeleteAsync(Guid id, Guid deletedBy)
     {
-        var company = await GetByIdAsync(id);
-        if (company == null)
-            throw new KeyNotFoundException("Empresa no encontrada");
-
-        company.Active = false;
-        company.DeletedAt = DateTime.UtcNow;
-
-        await UpdateAsync(company);
+        var company = await _context.Companies.FindAsync(id);
+        if (company != null)
+        {
+            company.Active = false;
+            company.DeletedAt = DateTime.UtcNow;
+            company.DeletedBy = deletedBy;
+            await _context.SaveChangesAsync();
+        }
     }
 }

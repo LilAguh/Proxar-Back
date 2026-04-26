@@ -90,7 +90,7 @@ public static class ProductionSeeder
             CompanyId = company.Id,
             Name = "Caja Efectivo",
             Type = AccountType.Efectivo,
-            CurrentBalance = 0,
+            CurrentBalance = 230000,
             Active = true,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
@@ -102,7 +102,7 @@ public static class ProductionSeeder
             CompanyId = company.Id,
             Name = "Banco Galicia",
             Type = AccountType.Banco,
-            CurrentBalance = 0,
+            CurrentBalance = 12000,
             Active = true,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
@@ -114,7 +114,7 @@ public static class ProductionSeeder
             CompanyId = company.Id,
             Name = "MercadoPago",
             Type = AccountType.MercadoPago,
-            CurrentBalance = 0,
+            CurrentBalance = 240000,
             Active = true,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
