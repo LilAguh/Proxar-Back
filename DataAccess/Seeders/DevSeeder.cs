@@ -24,31 +24,52 @@ public static class DevSeeder
         Console.WriteLine("🌱 Seeding data...");
 
         // ============================================
-        // 0. COMPANY (Multi-tenant)
+        // 0. COMPANIES (Multi-tenant - 3 empresas)
         // ============================================
-        var company = new Company
+        var company1 = new Company
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             Name = "Aberturas Sagitario",
-            Slug = "aberturas-sagitario",
+            Slug = "sagitario",
             Active = true,
             CreatedAt = DateTime.UtcNow,
         };
 
-        context.Companies.Add(company);
-        context.SaveChanges(); // Guardar company primero
-        Console.WriteLine("✅ Company creada");
+        var company2 = new Company
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
+            Name = "Vidrios del Norte",
+            Slug = "vidrios-norte",
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        var company3 = new Company
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
+            Name = "AlumCor S.A.",
+            Slug = "alumcor",
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        context.Companies.AddRange(company1, company2, company3);
+        context.SaveChanges(); // Guardar companies primero
+        Console.WriteLine("✅ 3 empresas creadas");
+
+        // Usar company1 (Sagitario) como empresa principal para los datos de prueba
+        var company = company1;
 
         // ============================================
-        // 1. USUARIOS
+        // 1. USUARIOS (5 empleados)
         // ============================================
         var admin = new User
         {
             Id = Guid.Parse("11111111-1111-1111-1111-111111111111"),
             CompanyId = company.Id,
-            Name = "Agustín",
-            Email = "admin@proxar.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+            Name = "Admin",
+            Email = "admin@sagitario.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -59,99 +80,141 @@ public static class DevSeeder
         {
             Id = Guid.Parse("22222222-2222-2222-2222-222222222222"),
             CompanyId = company.Id,
-            Name = "Hermano",
-            Email = "operador@proxar.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Operador123!"),
+            Name = "Daniel",
+            Email = "operador@sagitario.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Operador1234"),
             Role = UserRole.Operador,
             Active = true,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
         };
 
-        var padre = new User
+        var visor = new User
         {
             Id = Guid.Parse("33333333-3333-3333-3333-333333333333"),
             CompanyId = company.Id,
-            Name = "Padre",
-            Email = "padre@proxar.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Padre123!"),
+            Name = "Luca",
+            Email = "visor@sagitario.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Visor1234"),
+            Role = UserRole.Visor,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow
+        };
+
+        var operador2 = new User
+        {
+            Id = Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            CompanyId = company.Id,
+            Name = "Martina",
+            Email = "martina@sagitario.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Martina1234"),
             Role = UserRole.Operador,
             Active = true,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
         };
 
-        context.Users.AddRange(admin, operador, padre);
-        Console.WriteLine("✅ 3 usuarios creados");
+        var operador3 = new User
+        {
+            Id = Guid.Parse("55555555-5555-5555-5555-555555555555"),
+            CompanyId = company.Id,
+            Name = "Roberto",
+            Email = "roberto@sagitario.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Roberto1234"),
+            Role = UserRole.Operador,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow
+        };
+
+        // Usuarios de las otras empresas (solo admins para acceso rápido)
+        var admin2 = new User
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company2.Id,
+            Name = "Carlos Vidrios",
+            Email = "admin@vidriosnorte.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            Role = UserRole.Admin,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow
+        };
+
+        var admin3 = new User
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company3.Id,
+            Name = "Patricia Aluminio",
+            Email = "admin@alumcor.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            Role = UserRole.Admin,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow
+        };
+
+        context.Users.AddRange(admin, operador, visor, operador2, operador3, admin2, admin3);
+        Console.WriteLine("✅ 7 usuarios creados (5 en Sagitario, 1 en Vidrios Norte, 1 en AlumCor)");
 
         // ============================================
-        // 2. CLIENTES
+        // 2. CLIENTES (50 clientes)
         // ============================================
-        var client1 = new Client
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("c1111111-1111-1111-1111-111111111111"),
-            Name = "Juan Pérez",
-            Phone = "351-1234567",
-            Email = "juan@example.com",
-            Address = "Av. Libertador 1234, Córdoba",
-            Notes = "Cliente habitual, paga siempre en efectivo",
-            CreatedAt = DateTime.UtcNow.AddDays(-30),
-            ModifiedAt = DateTime.UtcNow.AddDays(-30)
+        var clients = new List<Client>();
+        var clientNames = new[] {
+            "Juan Pérez", "María González", "Carlos Rodríguez", "Ana Martínez", "Luis López",
+            "Laura Fernández", "Diego Silva", "Carolina Díaz", "Martín Castro", "Valentina Romero",
+            "Gabriel Sosa", "Sofía Benítez", "Matías Giménez", "Camila Morales", "Lucas Ruiz",
+            "Florencia Medina", "Nicolás Vargas", "Lucía Peralta", "Facundo Arias", "Agustina Torres",
+            "Hotel Paradise", "Restaurant El Buen Sabor", "Supermercado La Familia", "Farmacia Central",
+            "Veterinaria Pet Care", "Estudio Jurídico López & Asoc", "Consultorio Médico Salud Plus",
+            "Gimnasio Fitness Center", "Peluquería Estilo Nuevo", "Taller Mecánico El Rápido",
+            "Panadería Don Juan", "Librería Mundo Libro", "Ferretería Todo Construcción", "Pizzería La Nonna",
+            "Bar El Encuentro", "Café & Té La Taza", "Boutique Moda Actual", "Zapatería Pie Cómodo",
+            "Electrónica Tech World", "Mueblería El Hogar", "Óptica Visión Clara", "Joyería Brillantes",
+            "Floristería Jardín Secreto", "Carnicería La Vaca Feliz", "Verdulería Fresco Verde",
+            "Pescadería Mar Azul", "Heladería Cremoso", "Rotisería Casera", "Lavadero Auto Limpio",
+            "Cerrajería 24hs"
         };
 
-        var client2 = new Client
+        var random = new Random(42); // Seed fijo para reproducibilidad
+        for (int i = 0; i < 50; i++)
         {
-            CompanyId = company.Id,
-            Id = Guid.Parse("c2222222-2222-2222-2222-222222222222"),
-            Name = "María González",
-            Phone = "351-7654321",
-            Email = "maria@example.com",
-            Address = "Calle Falsa 123, Córdoba",
-            Notes = "Prefiere transferencia",
-            CreatedAt = DateTime.UtcNow.AddDays(-25),
-            ModifiedAt = DateTime.UtcNow.AddDays(-25)
-        };
+            var name = clientNames[i];
+            var isCompany = name.Contains("Hotel") || name.Contains("Restaurant") ||
+                           name.Contains("Supermercado") || name.Contains("Farmacia") ||
+                           name.Contains("Veterinaria") || name.Contains("Estudio") ||
+                           name.Contains("Consultorio") || name.Contains("Gimnasio") ||
+                           name.Contains("Peluquería") || name.Contains("Taller") ||
+                           name.Contains("Panadería") || name.Contains("Librería") ||
+                           name.Contains("Ferretería") || name.Contains("Pizzería") ||
+                           name.Contains("Bar") || name.Contains("Café") || name.Contains("Boutique") ||
+                           name.Contains("Zapatería") || name.Contains("Electrónica") ||
+                           name.Contains("Mueblería") || name.Contains("Óptica") ||
+                           name.Contains("Joyería") || name.Contains("Floristería") ||
+                           name.Contains("Carnicería") || name.Contains("Verdulería") ||
+                           name.Contains("Pescadería") || name.Contains("Heladería") ||
+                           name.Contains("Rotisería") || name.Contains("Lavadero") ||
+                           name.Contains("Cerrajería");
 
-        var client3 = new Client
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("c3333333-3333-3333-3333-333333333333"),
-            Name = "Local Comercial Centro",
-            Phone = "351-9876543",
-            Email = "local@centro.com",
-            Address = "Av. Colón 450, Córdoba",
-            Notes = "Dueño de 3 locales, cliente VIP",
-            CreatedAt = DateTime.UtcNow.AddDays(-20),
-            ModifiedAt = DateTime.UtcNow.AddDays(-20)
-        };
+            clients.Add(new Client
+            {
+                CompanyId = company.Id,
+                Id = Guid.NewGuid(),
+                Name = name,
+                Phone = $"351-{random.Next(1000000, 9999999)}",
+                Email = isCompany ? $"info@{name.ToLower().Replace(" ", "").Replace("&", "")}.com" :
+                                   $"{name.Split(' ')[0].ToLower()}@gmail.com",
+                Address = $"{(isCompany ? "Av." : "Calle")} {random.Next(100, 9999)}, Córdoba",
+                Notes = isCompany ? "Cliente comercial" : (random.Next(0, 2) == 0 ? "Cliente habitual" : null),
+                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 180)),
+                ModifiedAt = DateTime.UtcNow.AddDays(-random.Next(1, 30))
+            });
+        }
 
-        var client4 = new Client
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("c4444444-4444-4444-4444-444444444444"),
-            Name = "Hotel Paradise",
-            Phone = "351-5551234",
-            Email = "info@hotelparadise.com",
-            Address = "Av. Rafael Núñez 5000, Córdoba",
-            CreatedAt = DateTime.UtcNow.AddDays(-15),
-            ModifiedAt = DateTime.UtcNow.AddDays(-15)
-        };
-
-        var client5 = new Client
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("c5555555-5555-5555-5555-555555555555"),
-            Name = "Ana Martínez",
-            Phone = "351-4443322",
-            Email = "ana.martinez@gmail.com",
-            Address = "Barrio Cerro de las Rosas, Córdoba",
-            CreatedAt = DateTime.UtcNow.AddDays(-5),
-            ModifiedAt = DateTime.UtcNow.AddDays(-5)
-        };
-
-        context.Clients.AddRange(client1, client2, client3, client4, client5);
-        Console.WriteLine("✅ 5 clientes creados");
+        context.Clients.AddRange(clients);
+        Console.WriteLine("✅ 50 clientes creados");
 
         // ============================================
         // 3. CUENTAS
@@ -199,169 +262,90 @@ public static class DevSeeder
         context.SaveChanges();
 
         // ============================================
-        // 4. TICKETS
+        // 4. TICKETS (40 tickets)
         // ============================================
-        
-        // Ticket 1: Completado
-        var ticket1 = new Ticket
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("b1111111-1111-1111-1111-111111111111"),
-            Number = 1,
-            ClientId = client1.Id,
-            CreatedById = admin.Id,
-            AssignedToId = operador.Id,
-            Type = TicketType.Vidrio,
-            Status = TicketState.Completado,
-            Priority = Priority.Intermedia,
-            Title = "Cambio de vidrio ventana cocina",
-            Description = "Vidrio roto por piedra, 80x120cm aprox",
-            Address = client1.Address,
-            CreatedAt = DateTime.UtcNow.AddDays(-10),
-            LastUpdatedAt = DateTime.UtcNow.AddDays(-8),
-            CompletedAt = DateTime.UtcNow.AddDays(-8)
+        var tickets = new List<Ticket>();
+        var ticketTitles = new[] {
+            "Cambio de vidrio ventana cocina", "Frente templado local comercial", "Aberturas aluminio habitaciones",
+            "Reparación mampara baño", "Medición para espejo de pared", "Vidrio roto por accidente",
+            "Instalación puerta balcón", "Cambio de cerradura ventana", "Espejo de cuerpo entero",
+            "Ventana corrediza living", "Mampara shower box", "Pasamanos vidrio escalera",
+            "Frente vidriado negocio", "Ventanas DVH dormitorios", "Reparación ventiluz",
+            "Vidrio mesa comedor", "Pérgola techo policarbonato", "Cerramiento balcón",
+            "Espejo baño con repisa", "Vitrina exhibición", "Puerta vidrio templado oficina",
+            "Reemplazo vidrio puerta entrada", "Ventanas oscilobatientes cocina", "Baranda vidrio terraza",
+            "Espejo decorativo recibidor", "Mampara bañera fija", "Vidrio estufa hogar",
+            "Frente comercial aluminio", "Ventanas guillotina antiguas", "Pérgola retráctil patio",
+            "Espejo biselado living", "Cortina vidrio local", "Techo vidrio galería",
+            "Reparación ventana techo", "Biombo divisor ambiente", "Mosquitero ventana",
+            "Puerta vaivén cocina", "Vidriera escaparate", "Tragaluz claraboya", "Mamparas sanitarias"
         };
 
-        // Ticket 2: En Proceso
-        var ticket2 = new Ticket
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("b2222222-2222-2222-2222-222222222222"),
-            Number = 2,
-            ClientId = client3.Id,
-            CreatedById = admin.Id,
-            AssignedToId = padre.Id,
-            Type = TicketType.Obra,
-            Status = TicketState.EnProceso,
-            Priority = Priority.Alta,
-            Title = "Frente templado local comercial",
-            Description = "Frente completo 8m x 3m, vidrio templado 10mm, 3 puertas",
-            Address = client3.Address,
-            CreatedAt = DateTime.UtcNow.AddDays(-7),
-            LastUpdatedAt = DateTime.UtcNow.AddDays(-2)
-        };
+        var users = new[] { admin, operador, visor, operador2, operador3 };
+        var ticketTypes = Enum.GetValues<TicketType>();
+        var ticketStates = Enum.GetValues<TicketState>();
+        var priorities = Enum.GetValues<Priority>();
 
-        // Ticket 3: Aprobado
-        var ticket3 = new Ticket
+        for (int i = 0; i < 40; i++)
         {
-            CompanyId = company.Id,
-            Id = Guid.Parse("b3333333-3333-3333-3333-333333333333"),
-            Number = 3,
-            ClientId = client4.Id,
-            CreatedById = operador.Id,
-            AssignedToId = admin.Id,
-            Type = TicketType.Abertura,
-            Status = TicketState.Aprobado,
-            Priority = Priority.Alta,
-            Title = "20 aberturas aluminio habitaciones hotel",
-            Description = "Ventanas Modena corredizas 150x100, DVH",
-            Address = client4.Address,
-            CreatedAt = DateTime.UtcNow.AddDays(-5),
-            LastUpdatedAt = DateTime.UtcNow.AddDays(-3)
-        };
+            var daysAgo = random.Next(0, 90);
+            var state = ticketStates[random.Next(ticketStates.Length)];
+            var createdAt = DateTime.UtcNow.AddDays(-daysAgo);
 
-        // Ticket 4: Presupuestado
-        var ticket4 = new Ticket
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("b4444444-4444-4444-4444-444444444444"),
-            Number = 4,
-            ClientId = client2.Id,
-            CreatedById = padre.Id,
-            AssignedToId = operador.Id,
-            Type = TicketType.Reparacion,
-            Status = TicketState.Presupuestado,
-            Priority = Priority.Baja,
-            Title = "Reparación mampara baño",
-            Description = "Bisagra rota, necesita reemplazo",
-            Address = client2.Address,
-            CreatedAt = DateTime.UtcNow.AddDays(-3),
-            LastUpdatedAt = DateTime.UtcNow.AddDays(-2)
-        };
+            tickets.Add(new Ticket
+            {
+                CompanyId = company.Id,
+                Id = Guid.NewGuid(),
+                Number = i + 1,
+                ClientId = clients[random.Next(clients.Count)].Id,
+                CreatedById = users[random.Next(users.Length)].Id,
+                AssignedToId = users[random.Next(users.Length)].Id,
+                Type = ticketTypes[random.Next(ticketTypes.Length)],
+                Status = state,
+                Priority = priorities[random.Next(priorities.Length)],
+                Title = ticketTitles[i],
+                Description = $"Descripción detallada del trabajo: {ticketTitles[i]}",
+                Address = clients[random.Next(clients.Count)].Address,
+                CreatedAt = createdAt,
+                LastUpdatedAt = createdAt.AddDays(random.Next(0, (int)(DateTime.UtcNow - createdAt).TotalDays + 1)),
+                CompletedAt = state == TicketState.Completado ? createdAt.AddDays(random.Next(1, 15)) : null
+            });
+        }
 
-        // Ticket 5: Nuevo
-        var ticket5 = new Ticket
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("b5555555-5555-5555-5555-555555555555"),
-            Number = 5,
-            ClientId = client5.Id,
-            CreatedById = admin.Id,
-            AssignedToId = admin.Id,
-            Type = TicketType.Medicion,
-            Status = TicketState.Nuevo,
-            Priority = Priority.Intermedia,
-            Title = "Medición para espejo de pared",
-            Description = "Cliente quiere espejo completo en pared de living",
-            Address = client5.Address,
-            CreatedAt = DateTime.UtcNow.AddDays(-1),
-            LastUpdatedAt = DateTime.UtcNow.AddDays(-1)
-        };
-
-        // Ticket 6: En Visita
-        var ticket6 = new Ticket
-        {
-            CompanyId = company.Id,
-            Id = Guid.Parse("b6666666-6666-6666-6666-666666666666"),
-            Number = 6,
-            ClientId = client1.Id,
-            CreatedById = operador.Id,
-            AssignedToId = padre.Id,
-            Type = TicketType.Vidrio,
-            Status = TicketState.EnVisita,
-            Priority = Priority.Urgente,
-            Title = "Vidrio roto por accidente",
-            Description = "Urgente, necesita reemplazo hoy",
-            Address = client1.Address,
-            CreatedAt = DateTime.UtcNow,
-            LastUpdatedAt = DateTime.UtcNow
-        };
-
-        context.Tickets.AddRange(ticket1, ticket2, ticket3, ticket4, ticket5, ticket6);
-        Console.WriteLine("✅ 6 tickets creados");
+        context.Tickets.AddRange(tickets);
+        Console.WriteLine("✅ 40 tickets creados");
 
         // ============================================
         // 5. HISTORIAL DE TICKETS
         // ============================================
-        var history1 = new TicketHistory
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            TicketId = ticket1.Id,
-            UserId = admin.Id,
-            Action = ActionHistorial.Creado,
-            NewStatus = TicketState.Nuevo.ToString(),
-            Timestamp = DateTime.UtcNow.AddDays(-10)
-        };
+        var ticketHistories = new List<TicketHistory>();
+        var historyActions = Enum.GetValues<ActionHistorial>();
 
-        var history2 = new TicketHistory
+        // Crear historial para los primeros 15 tickets (algunos con historial, otros sin)
+        for (int i = 0; i < Math.Min(15, tickets.Count); i++)
         {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            TicketId = ticket1.Id,
-            UserId = operador.Id,
-            Action = ActionHistorial.EstadoCambiado,
-            PreviousStatus = TicketState.Nuevo.ToString(),
-            NewStatus = TicketState.EnProceso.ToString(),
-            Comment = "Iniciando trabajo",
-            Timestamp = DateTime.UtcNow.AddDays(-9)
-        };
+            var ticket = tickets[i];
+            var historyCount = random.Next(1, 5); // 1 a 4 entradas de historial por ticket
 
-        var history3 = new TicketHistory
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            TicketId = ticket1.Id,
-            UserId = operador.Id,
-            Action = ActionHistorial.Completado,
-            PreviousStatus = TicketState.EnProceso.ToString(),
-            NewStatus = TicketState.Completado.ToString(),
-            Comment = "Trabajo finalizado, cliente satisfecho",
-            Timestamp = DateTime.UtcNow.AddDays(-8)
-        };
+            for (int h = 0; h < historyCount; h++)
+            {
+                ticketHistories.Add(new TicketHistory
+                {
+                    CompanyId = company.Id,
+                    Id = Guid.NewGuid(),
+                    TicketId = ticket.Id,
+                    UserId = users[random.Next(users.Length)].Id,
+                    Action = historyActions[random.Next(historyActions.Length)],
+                    PreviousStatus = h > 0 ? ticketStates[random.Next(ticketStates.Length)].ToString() : null,
+                    NewStatus = ticketStates[random.Next(ticketStates.Length)].ToString(),
+                    Comment = random.Next(0, 3) == 0 ? "Actualización del estado" : null,
+                    Timestamp = ticket.CreatedAt.AddHours(h * random.Next(1, 24))
+                });
+            }
+        }
 
-        context.TicketHistory.AddRange(history1, history2, history3);
-        Console.WriteLine("✅ Historial de tickets creado");
+        context.TicketHistory.AddRange(ticketHistories);
+        Console.WriteLine($"✅ {ticketHistories.Count} entradas de historial creadas");
 
         // Guardar tickets e historial
         context.SaveChanges();
@@ -370,140 +354,90 @@ public static class DevSeeder
         context.Database.ExecuteSqlRaw("SELECT setval(pg_get_serial_sequence('\"Tickets\"', 'Number'), (SELECT MAX(\"Number\") FROM \"Tickets\"))");
 
         // ============================================
-        // 6. MOVIMIENTOS DE CAJA
+        // 6. MOVIMIENTOS DE CAJA (60 movimientos)
         // ============================================
+        var movements = new List<BoxMovement>();
+        var accounts = new[] { cuentaEfectivo, cuentaBanco, cuentaMercadoPago };
+        var movementTypes = Enum.GetValues<MovementType>();
+        var paymentMethods = Enum.GetValues<PaymentMethod>();
 
-        // Movimiento 1: Ingreso por ticket completado
-        var mov1 = new BoxMovement
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 1,
-            AccountId = cuentaEfectivo.Id,
-            TicketId = ticket1.Id,
-            UserId = operador.Id,
-            Type = MovementType.Ingreso,
-            Amount = 15000,
-            Method = PaymentMethod.Efectivo,
-            Concept = "Cobro cambio vidrio - Ticket #1",
-            VoucherNumber = "REC-001",
-            MovementDate = DateTime.UtcNow.AddDays(-8),
-            RegisteredAt = DateTime.UtcNow.AddDays(-8)
+        var incomeConcepts = new[] {
+            "Cobro trabajo realizado", "Seña 50%", "Saldo final", "Cobro al contado",
+            "Transferencia cliente", "Pago MercadoPago", "Cobro efectivo", "Anticipo 30%"
         };
 
-        // Movimiento 2: Seña frente templado
-        var mov2 = new BoxMovement
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 2,
-            AccountId = cuentaBanco.Id,
-            TicketId = ticket2.Id,
-            UserId = padre.Id,
-            Type = MovementType.Ingreso,
-            Amount = 180000,
-            Method = PaymentMethod.Transferencia,
-            Concept = "Seña 60% frente templado - Ticket #2",
-            VoucherNumber = "TRANS-5547",
-            MovementDate = DateTime.UtcNow.AddDays(-6),
-            RegisteredAt = DateTime.UtcNow.AddDays(-6)
+        var expenseConcepts = new[] {
+            "Compra aluminio", "Compra vidrios", "Compra herrajes", "Pago servicios",
+            "Pago sueldos", "Compra herramientas", "Mantenimiento taller", "Alquiler local",
+            "Impuestos", "Seguros", "Publicidad", "Transporte materiales"
         };
 
-        // Movimiento 3: Seña aberturas hotel
-        var mov3 = new BoxMovement
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 3,
-            AccountId = cuentaBanco.Id,
-            TicketId = ticket3.Id,
-            UserId = admin.Id,
-            Type = MovementType.Ingreso,
-            Amount = 450000,
-            Method = PaymentMethod.Transferencia,
-            Concept = "Seña 60% aberturas hotel - Ticket #3",
-            VoucherNumber = "TRANS-5601",
-            Observations = "Cliente pagó adelantado 70% en vez de 60%",
-            MovementDate = DateTime.UtcNow.AddDays(-3),
-            RegisteredAt = DateTime.UtcNow.AddDays(-3)
-        };
+        // Calcular balances iniciales
+        decimal efectivoBalance = 50000;
+        decimal bancoBalance = 200000;
+        decimal mpBalance = 30000;
 
-        // Movimiento 4: Compra de aluminio (egreso)
-        var mov4 = new BoxMovement
+        for (int i = 0; i < 60; i++)
         {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 4,
-            AccountId = cuentaBanco.Id,
-            TicketId = null,
-            UserId = admin.Id,
-            Type = MovementType.Egreso,
-            Amount = 85000,
-            Method = PaymentMethod.Transferencia,
-            Concept = "Compra aluminio proveedor",
-            VoucherNumber = "FAC-B-0012345",
-            Observations = "Stock para proyecto hotel",
-            MovementDate = DateTime.UtcNow.AddDays(-2),
-            RegisteredAt = DateTime.UtcNow.AddDays(-2)
-        };
+            var daysAgo = random.Next(0, 60);
+            var type = movementTypes[random.Next(movementTypes.Length)];
+            var account = accounts[random.Next(accounts.Length)];
+            var method = paymentMethods[random.Next(paymentMethods.Length)];
 
-        // Movimiento 5: Compra de vidrios (egreso)
-        var mov5 = new BoxMovement
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 5,
-            AccountId = cuentaEfectivo.Id,
-            TicketId = null,
-            UserId = padre.Id,
-            Type = MovementType.Egreso,
-            Amount = 28000,
-            Method = PaymentMethod.Efectivo,
-            Concept = "Compra vidrios float y templado",
-            VoucherNumber = "FAC-B-7788",
-            MovementDate = DateTime.UtcNow.AddDays(-1),
-            RegisteredAt = DateTime.UtcNow.AddDays(-1)
-        };
+            // Ajustar método según cuenta
+            if (account == cuentaEfectivo) method = PaymentMethod.Efectivo;
+            else if (account == cuentaBanco) method = PaymentMethod.Transferencia;
+            else method = random.Next(0, 2) == 0 ? PaymentMethod.Transferencia : PaymentMethod.Tarjeta;
 
-        // Movimiento 6: Pago de servicios (egreso)
-        var mov6 = new BoxMovement
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 6,
-            AccountId = cuentaMercadoPago.Id,
-            TicketId = null,
-            UserId = admin.Id,
-            Type = MovementType.Egreso,
-            Amount = 12500,
-            Method = PaymentMethod.Transferencia,
-            Concept = "Pago luz y gas taller",
-            VoucherNumber = "SERV-2024-12",
-            MovementDate = DateTime.UtcNow.AddHours(-5),
-            RegisteredAt = DateTime.UtcNow.AddHours(-5)
-        };
+            var amount = type == MovementType.Ingreso
+                ? random.Next(5000, 300000)
+                : random.Next(3000, 150000);
 
-        // Movimiento 7: Ingreso efectivo hoy
-        var mov7 = new BoxMovement
-        {
-            CompanyId = company.Id,
-            Id = Guid.NewGuid(),
-            Number = 7,
-            AccountId = cuentaEfectivo.Id,
-            TicketId = null,
-            UserId = operador.Id,
-            Type = MovementType.Ingreso,
-            Amount = 8500,
-            Method = PaymentMethod.Efectivo,
-            Concept = "Venta espejo marco madera",
-            VoucherNumber = "REC-002",
-            Observations = "Cliente de paso, sin ticket previo",
-            MovementDate = DateTime.UtcNow.AddHours(-2),
-            RegisteredAt = DateTime.UtcNow.AddHours(-2)
-        };
+            // Actualizar balances
+            if (type == MovementType.Ingreso)
+            {
+                if (account == cuentaEfectivo) efectivoBalance += amount;
+                else if (account == cuentaBanco) bancoBalance += amount;
+                else mpBalance += amount;
+            }
+            else
+            {
+                if (account == cuentaEfectivo) efectivoBalance -= amount;
+                else if (account == cuentaBanco) bancoBalance -= amount;
+                else mpBalance -= amount;
+            }
 
-        context.BoxMovements.AddRange(mov1, mov2, mov3, mov4, mov5, mov6, mov7);
-        Console.WriteLine("✅ 7 movimientos de caja creados");
+            var hasTicket = type == MovementType.Ingreso && random.Next(0, 3) == 0;
+            var concept = type == MovementType.Ingreso
+                ? incomeConcepts[random.Next(incomeConcepts.Length)]
+                : expenseConcepts[random.Next(expenseConcepts.Length)];
+
+            movements.Add(new BoxMovement
+            {
+                CompanyId = company.Id,
+                Id = Guid.NewGuid(),
+                Number = i + 1,
+                AccountId = account.Id,
+                TicketId = hasTicket ? tickets[random.Next(tickets.Count)].Id : null,
+                UserId = users[random.Next(users.Length)].Id,
+                Type = type,
+                Amount = amount,
+                Method = method,
+                Concept = hasTicket ? $"{concept} - Ticket #{random.Next(1, 41)}" : concept,
+                VoucherNumber = type == MovementType.Ingreso ? $"REC-{i + 1:D4}" : $"FAC-{i + 1:D4}",
+                Observations = random.Next(0, 5) == 0 ? "Observación adicional" : null,
+                MovementDate = DateTime.UtcNow.AddDays(-daysAgo).AddHours(random.Next(8, 20)),
+                RegisteredAt = DateTime.UtcNow.AddDays(-daysAgo).AddHours(random.Next(8, 20))
+            });
+        }
+
+        // Actualizar balances finales de cuentas
+        cuentaEfectivo.CurrentBalance = Math.Max(0, efectivoBalance);
+        cuentaBanco.CurrentBalance = Math.Max(0, bancoBalance);
+        cuentaMercadoPago.CurrentBalance = Math.Max(0, mpBalance);
+
+        context.BoxMovements.AddRange(movements);
+        Console.WriteLine("✅ 60 movimientos de caja creados");
 
         // ============================================
         // GUARDAR TODO
@@ -511,12 +445,14 @@ public static class DevSeeder
         context.SaveChanges();
 
         Console.WriteLine("🎉 Seeding completado exitosamente!");
-        Console.WriteLine($"   - Usuarios: 3");
-        Console.WriteLine($"   - Clientes: 5");
-        Console.WriteLine($"   - Cuentas: 3");
-        Console.WriteLine($"   - Tickets: 6");
-        Console.WriteLine($"   - Movimientos: 7");
-        Console.WriteLine($"   - Saldo Total: ${cuentaEfectivo.CurrentBalance + cuentaBanco.CurrentBalance + cuentaMercadoPago.CurrentBalance:N0}");
+        Console.WriteLine($"   - Empresas: 3 (Sagitario, Vidrios Norte, AlumCor)");
+        Console.WriteLine($"   - Usuarios: 7 (5 en Sagitario, 1 por empresa en las otras)");
+        Console.WriteLine($"   - Clientes: 50 (en Sagitario)");
+        Console.WriteLine($"   - Cuentas: 3 (en Sagitario)");
+        Console.WriteLine($"   - Tickets: 40 (en Sagitario)");
+        Console.WriteLine($"   - Historial: {ticketHistories.Count} (en Sagitario)");
+        Console.WriteLine($"   - Movimientos: 60 (en Sagitario)");
+        Console.WriteLine($"   - Saldo Total Sagitario: ${cuentaEfectivo.CurrentBalance + cuentaBanco.CurrentBalance + cuentaMercadoPago.CurrentBalance:N0}");
     }
 
     private static void ResetSequences(ProxarDbContext context)
