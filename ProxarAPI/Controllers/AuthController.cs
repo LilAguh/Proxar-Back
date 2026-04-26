@@ -18,7 +18,27 @@ public class AuthController : BaseApiController
     }
 
     /// <summary>
-    /// Login
+    /// Register - Crea cuenta nueva + empresa
+    /// </summary>
+    [HttpPost("register")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AuthResponseDto>> Register([FromBody] RegisterRequest request)
+    {
+        try
+        {
+            var response = await _authService.RegisterAsync(request);
+            return Ok(response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Login genérico (owner/admin)
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -29,6 +49,26 @@ public class AuthController : BaseApiController
         try
         {
             var response = await _authService.LoginAsync(request);
+            return Ok(response);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Login interno de empresa (por slug)
+    /// </summary>
+    [HttpPost("login/{slug}")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<AuthResponseDto>> LoginBySlug([FromRoute] string slug, [FromBody] LoginRequest request)
+    {
+        try
+        {
+            var response = await _authService.LoginBySlugAsync(slug, request);
             return Ok(response);
         }
         catch (UnauthorizedAccessException ex)

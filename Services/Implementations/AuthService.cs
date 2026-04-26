@@ -3,6 +3,7 @@ using DataAccess.Repositories.Interfaces;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Models;
+using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -33,43 +34,90 @@ public class AuthService : IAuthService
 
     public async Task<AuthResponseDto> LoginAsync(LoginRequest request)
     {
-        // Extraer companyId del email o usar slug
-        // Por ahora asumimos que el email viene con formato: user@company-slug
-        // O podríamos pasar companyId explícitamente en el request
-        
-        // TEMPORAL: buscar en todas las companies hasta encontrar el usuario
-        // En producción, el login debería recibir el companyId o slug
-        User? user = null;
-        var companies = await _companyRepository.GetAllActiveAsync();
-        
-        foreach (var company in companies)
-        {
-            user = await _userRepository.GetByEmailAsync(request.Email, company.Id);
-            if (user != null) break;
-        }
-        
-        if (user == null)
-            throw new UnauthorizedAccessException("Email o contraseña incorrectos");
+        // Normalizar email
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
-        if (!user.Active)
-            throw new UnauthorizedAccessException("Usuario desactivado");
+        // Buscar usuario por email en TODAS las empresas activas
+        User? foundUser = null;
+        Company? foundCompany = null;
+
+        var allCompanies = await _companyRepository.GetAllActiveAsync();
+
+        foreach (var company in allCompanies)
+        {
+            var user = await _userRepository.GetByEmailAsync(normalizedEmail, company.Id);
+            if (user != null)
+            {
+                foundUser = user;
+                foundCompany = company;
+                break;
+            }
+        }
+
+        // Si no encontramos el usuario en ninguna empresa
+        if (foundUser == null)
+        {
+            throw new UnauthorizedAccessException("Email o contraseña incorrectos");
+        }
+
+        // Verificar que el usuario esté activo
+        if (!foundUser.Active)
+        {
+            throw new UnauthorizedAccessException("Usuario desactivado. Contactá al administrador.");
+        }
+
+        // Verificar que la empresa esté activa
+        if (foundCompany == null || !foundCompany.Active)
+        {
+            throw new UnauthorizedAccessException("La empresa no está activa");
+        }
 
         // Verificar contraseña
-        bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
-        
-        if (!isValidPassword)
-            throw new UnauthorizedAccessException("Email o contraseña incorrectos");
+        bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, foundUser.PasswordHash);
 
-        // Generar token
-        var token = GenerateJwtToken(user);
+        if (!isValidPassword)
+        {
+            throw new UnauthorizedAccessException("Email o contraseña incorrectos");
+        }
+
+        // Generar token JWT con companyId incluido
+        var token = GenerateJwtToken(foundUser);
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
+
+        var userDto = _mapper.Map<UserDto>(foundUser);
 
         return new AuthResponseDto
         {
             Token = token,
-            User = _mapper.Map<UserDto>(user),
+            User = userDto,
             ExpiresAt = expiresAt
         };
+    }
+
+    private string GenerateJwtToken(User user)
+    {
+        var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim("CompanyId", user.CompanyId.ToString()), // ← CRÍTICO: CompanyId en el token
+        new Claim(ClaimTypes.Email, user.Email),
+        new Claim(ClaimTypes.Name, user.Name),
+        new Claim(ClaimTypes.Role, user.Role.ToString()),
+        new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+    };
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtSettings.Issuer,
+            audience: _jwtSettings.Audience,
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     public async Task<UserDto> GetUserByIdAsync(Guid userId, Guid companyId)
@@ -157,29 +205,99 @@ public class AuthService : IAuthService
         await _userRepository.UpdateAsync(user);
     }
 
-    private string GenerateJwtToken(User user)
+    public async Task<AuthResponseDto> RegisterAsync(RegisterRequest request)
     {
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+        // Normalizar slug
+        var normalizedSlug = request.CompanySlug.Trim().ToLowerInvariant();
 
-        var claims = new[]
+        // Verificar si el slug ya existe
+        var existingCompany = await _companyRepository.GetBySlugAsync(normalizedSlug);
+        if (existingCompany != null)
+            throw new InvalidOperationException("El slug de empresa ya está en uso. Elegí otro.");
+
+        // Crear la empresa
+        var company = new Company
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim("CompanyId", user.CompanyId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Name, user.Name),
-            new Claim(ClaimTypes.Role, user.Role.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            Name = request.CompanyName,
+            Slug = normalizedSlug,
+            LogoUrl = request.LogoUrl,
+            Active = true,
+            CreatedAt = DateTime.UtcNow
         };
 
-        var token = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
-            signingCredentials: credentials
-        );
+        var createdCompany = await _companyRepository.CreateAsync(company);
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        // Crear el usuario owner/admin
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        var user = new User
+        {
+            CompanyId = createdCompany.Id,
+            Name = request.Name,
+            Email = request.Email.Trim().ToLowerInvariant(),
+            PasswordHash = passwordHash,
+            Role = UserRole.Admin,
+            Active = true,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow
+        };
+
+        var createdUser = await _userRepository.AddAsync(user);
+
+        // Generar token
+        var token = GenerateJwtToken(createdUser);
+        var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
+
+        var userDto = _mapper.Map<UserDto>(createdUser);
+
+        return new AuthResponseDto
+        {
+            Token = token,
+            User = userDto,
+            ExpiresAt = expiresAt
+        };
+    }
+
+    public async Task<AuthResponseDto> LoginBySlugAsync(string slug, LoginRequest request)
+    {
+        // Normalizar slug y email
+        var normalizedSlug = slug.Trim().ToLowerInvariant();
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        // Buscar la empresa por slug
+        var company = await _companyRepository.GetBySlugAsync(normalizedSlug);
+        if (company == null)
+            throw new UnauthorizedAccessException("Empresa no encontrada");
+
+        // Verificar que la empresa esté activa
+        if (!company.Active)
+            throw new UnauthorizedAccessException("La empresa no está activa");
+
+        // Buscar usuario por email en esta empresa específica
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, company.Id);
+        if (user == null)
+            throw new UnauthorizedAccessException("Email o contraseña incorrectos");
+
+        // Verificar que el usuario esté activo
+        if (!user.Active)
+            throw new UnauthorizedAccessException("Usuario desactivado. Contactá al administrador.");
+
+        // Verificar contraseña
+        bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        if (!isValidPassword)
+            throw new UnauthorizedAccessException("Email o contraseña incorrectos");
+
+        // Generar token JWT
+        var token = GenerateJwtToken(user);
+        var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
+
+        var userDto = _mapper.Map<UserDto>(user);
+
+        return new AuthResponseDto
+        {
+            Token = token,
+            User = userDto,
+            ExpiresAt = expiresAt
+        };
     }
 }
