@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ProxarDbContext))]
-    [Migration("20260425193606_InitialCreate")]
+    [Migration("20260426121849_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -211,6 +211,9 @@ namespace DataAccess.Migrations
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("LogoUrl")
                         .HasColumnType("text");
