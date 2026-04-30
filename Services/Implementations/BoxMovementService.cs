@@ -80,7 +80,7 @@ public class BoxMovementService : IBoxMovementService
             Concept = request.Concept,
             VoucherNumber = request.VoucherNumber,
             Observations = request.Observations,
-            MovementDate = request.MovementDate,
+            MovementDate = DateTime.SpecifyKind(request.MovementDate, DateTimeKind.Utc),
             Active = true,
             RegisteredAt = DateTime.UtcNow
         };
