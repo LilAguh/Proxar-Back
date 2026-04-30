@@ -14,6 +14,8 @@ public class ProxarDbContext : DbContext
     public DbSet<TicketHistory> TicketHistory { get; set; }
     public DbSet<Account> Accounts { get; set; }
     public DbSet<BoxMovement> BoxMovements { get; set; }
+    public DbSet<CashRegister> CashRegisters { get; set; }
+    public DbSet<CashRegisterEntry> CashRegisterEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -165,6 +167,51 @@ public class ProxarDbContext : DbContext
             
             // Soft delete global filter
             entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
+        });
+
+        // ============================================
+        // CASH REGISTER
+        // ============================================
+        modelBuilder.Entity<CashRegister>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Date).IsRequired();
+            entity.Property(e => e.Status).HasConversion<string>().HasMaxLength(10);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.HasIndex(e => new { e.CompanyId, e.Date }).IsUnique();
+
+            entity.HasOne(e => e.Company)
+                  .WithMany(c => c.CashRegisters)
+                  .HasForeignKey(e => e.CompanyId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.OpenedBy)
+                  .WithMany()
+                  .HasForeignKey(e => e.OpenedById)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(e => e.ClosedBy)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClosedById)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<CashRegisterEntry>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.OpeningAmount).HasPrecision(18, 2);
+            entity.Property(e => e.ClosingAmount).HasPrecision(18, 2);
+            entity.HasIndex(e => new { e.CashRegisterId, e.AccountId }).IsUnique();
+
+            entity.HasOne(e => e.CashRegister)
+                  .WithMany(r => r.Entries)
+                  .HasForeignKey(e => e.CashRegisterId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Account)
+                  .WithMany(a => a.CashRegisterEntries)
+                  .HasForeignKey(e => e.AccountId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         // ============================================

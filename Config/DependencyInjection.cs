@@ -3,6 +3,7 @@ using DataAccess.Repositories.Interfaces;
 using Services.Implementations;
 using Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using Models;
 
 namespace Config;
 
@@ -17,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IBoxMovementRepository, BoxMovementRepository>();
         services.AddScoped<ITicketHistoryRepository, TicketHistoryRepository>();
+        services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
 
 
         return services;
@@ -31,6 +33,7 @@ public static class DependencyInjection
     services.AddScoped<IAccountService, AccountService>();
     services.AddScoped<IBoxMovementService, BoxMovementService>();
     services.AddScoped<IDashboardService, DashboardService>();
+    services.AddScoped<ICashRegisterService, CashRegisterService>();
 
     return services;
 }
