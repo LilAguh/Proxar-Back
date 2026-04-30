@@ -141,6 +141,81 @@ namespace DataAccess.Migrations
                     b.ToTable("BoxMovements");
                 });
 
+            modelBuilder.Entity("Models.CashRegister", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClosedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("OpenedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OpenedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClosedById");
+
+                    b.HasIndex("OpenedById");
+
+                    b.HasIndex("CompanyId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("CashRegisters");
+                });
+
+            modelBuilder.Entity("Models.CashRegisterEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CashRegisterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("ClosingAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OpeningAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("CashRegisterId", "AccountId")
+                        .IsUnique();
+
+                    b.ToTable("CashRegisterEntries");
+                });
+
             modelBuilder.Entity("Models.Client", b =>
                 {
                     b.Property<Guid>("Id")
@@ -458,6 +533,51 @@ namespace DataAccess.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Models.CashRegister", b =>
+                {
+                    b.HasOne("Models.User", "ClosedBy")
+                        .WithMany()
+                        .HasForeignKey("ClosedById")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Models.Company", "Company")
+                        .WithMany("CashRegisters")
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Models.User", "OpenedBy")
+                        .WithMany()
+                        .HasForeignKey("OpenedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ClosedBy");
+
+                    b.Navigation("Company");
+
+                    b.Navigation("OpenedBy");
+                });
+
+            modelBuilder.Entity("Models.CashRegisterEntry", b =>
+                {
+                    b.HasOne("Models.Account", "Account")
+                        .WithMany("CashRegisterEntries")
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Models.CashRegister", "CashRegister")
+                        .WithMany("Entries")
+                        .HasForeignKey("CashRegisterId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Account");
+
+                    b.Navigation("CashRegister");
+                });
+
             modelBuilder.Entity("Models.Client", b =>
                 {
                     b.HasOne("Models.Company", "Company")
@@ -543,7 +663,14 @@ namespace DataAccess.Migrations
 
             modelBuilder.Entity("Models.Account", b =>
                 {
+                    b.Navigation("CashRegisterEntries");
+
                     b.Navigation("Movements");
+                });
+
+            modelBuilder.Entity("Models.CashRegister", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("Models.Client", b =>
@@ -556,6 +683,8 @@ namespace DataAccess.Migrations
                     b.Navigation("Accounts");
 
                     b.Navigation("BoxMovements");
+
+                    b.Navigation("CashRegisters");
 
                     b.Navigation("Clients");
 
