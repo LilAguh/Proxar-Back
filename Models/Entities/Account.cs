@@ -27,4 +27,5 @@ public class Account
 
     // Navigation properties
     public ICollection<BoxMovement> Movements { get; set; } = new List<BoxMovement>();
+    public ICollection<CashRegisterEntry> CashRegisterEntries { get; set; } = new List<CashRegisterEntry>();
 }
