@@ -114,6 +114,7 @@ public class TicketService : ITicketService
         // Crear historial
         var history = new TicketHistory
         {
+            CompanyId = companyId,
             TicketId = createdTicket.Id,
             UserId = userId,
             Action = ActionHistorial.Creado,
@@ -168,6 +169,7 @@ public class TicketService : ITicketService
         // Crear historial
         var history = new TicketHistory
         {
+            CompanyId = companyId,
             TicketId = ticket.Id,
             UserId = userId,
             Action = ActionHistorial.EstadoCambiado,
