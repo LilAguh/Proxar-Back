@@ -17,4 +17,5 @@ public class Company
     public ICollection<Ticket> Tickets { get; set; } = new List<Ticket>();
     public ICollection<Account> Accounts { get; set; } = new List<Account>();
     public ICollection<BoxMovement> BoxMovements { get; set; } = new List<BoxMovement>();
+    public ICollection<CashRegister> CashRegisters { get; set; } = new List<CashRegister>();
 }
