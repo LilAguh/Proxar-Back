@@ -12,6 +12,14 @@ public interface IBoxMovementRepository
     Task<IEnumerable<BoxMovement>> GetByAccountAsync(Guid accountId, Guid companyId);
     Task<IEnumerable<BoxMovement>> GetByTicketAsync(Guid ticketId, Guid companyId);
     Task<IEnumerable<BoxMovement>> GetByDateRangeAsync(DateTime from, DateTime to, Guid companyId);
+    Task<List<BoxMovement>> GetFilteredAsync(
+        Guid companyId,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        Guid? accountId,
+        Guid? ticketId,
+        string? type,
+        string? paymentMethod);
     Task<BoxMovement> AddAsync(BoxMovement movement);
     Task UpdateAsync(BoxMovement movement);
     Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy);
