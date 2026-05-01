@@ -39,6 +39,12 @@ public class ClientService : IClientService
         return _mapper.Map<IEnumerable<ClientDto>>(clients);
     }
 
+    public async Task<IEnumerable<ClientDto>> SearchByNameAsync(Guid companyId, string name)
+    {
+        var clients = await _clientRepository.SearchByNameAsync(companyId, name);
+        return _mapper.Map<IEnumerable<ClientDto>>(clients);
+    }
+
     public async Task<ClientDto> CreateClientAsync(CreateClientRequest request, Guid companyId)
     {
         var client = new Client
