@@ -23,6 +23,7 @@ public static class AppMessages
     {
         public const string NotFound = "Ticket no encontrado";
         public const string AssignedUserNotFound = "Usuario asignado no encontrado";
+        public const string InvalidStatusTransition = "La transición de estado no está permitida";
     }
 
     public static class Client

@@ -11,6 +11,17 @@ namespace Services.Implementations;
 
 public class TicketService : ITicketService
 {
+    private static readonly IReadOnlyDictionary<TicketState, TicketState[]> AllowedTransitions = new Dictionary<TicketState, TicketState[]>
+    {
+        [TicketState.Nuevo] = [TicketState.EnVisita, TicketState.Completado, TicketState.Descartado],
+        [TicketState.EnVisita] = [TicketState.Presupuestado, TicketState.Completado, TicketState.Descartado],
+        [TicketState.Presupuestado] = [TicketState.Aprobado, TicketState.Descartado],
+        [TicketState.Aprobado] = [TicketState.EnProceso, TicketState.Completado, TicketState.Descartado],
+        [TicketState.EnProceso] = [TicketState.Completado, TicketState.Descartado],
+        [TicketState.Completado] = [],
+        [TicketState.Descartado] = []
+    };
+
     private readonly ITicketRepository _ticketRepository;
     private readonly IClientRepository _clientRepository;
     private readonly IUserRepository _userRepository;
@@ -153,6 +164,8 @@ public class TicketService : ITicketService
         var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
+        ValidateStatusTransition(ticket.Status, request.NewStatus);
+
         var previousStatus = ticket.Status;
         ticket.Status = request.NewStatus;
 
@@ -175,6 +188,15 @@ public class TicketService : ITicketService
         await _historyRepository.AddAsync(history);
 
         return _mapper.Map<TicketDto>(ticket);
+    }
+
+    private static void ValidateStatusTransition(TicketState currentStatus, TicketState nextStatus)
+    {
+        if (currentStatus == nextStatus)
+            throw new BusinessRuleException(AppMessages.Ticket.InvalidStatusTransition);
+
+        if (!AllowedTransitions.TryGetValue(currentStatus, out var allowedStates) || !allowedStates.Contains(nextStatus))
+            throw new BusinessRuleException(AppMessages.Ticket.InvalidStatusTransition);
     }
 
     public async Task SoftDeleteTicketAsync(Guid id, Guid companyId, Guid deletedBy)
