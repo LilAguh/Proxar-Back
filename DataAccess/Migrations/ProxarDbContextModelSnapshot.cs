@@ -284,10 +284,6 @@ namespace DataAccess.Migrations
                         .HasMaxLength(13)
                         .HasColumnType("character varying(13)");
 
-                    b.Property<string>("CardBrand")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
                     b.Property<string>("CertPassword")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -303,10 +299,6 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
-
-                    b.Property<string>("CustomerGatewayToken")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("DateFormat")
                         .IsRequired()
@@ -355,10 +347,6 @@ namespace DataAccess.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
-                    b.Property<string>("LastFourDigits")
-                        .HasMaxLength(4)
-                        .HasColumnType("character varying(4)");
-
                     b.Property<string>("LegalName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
@@ -371,25 +359,10 @@ namespace DataAccess.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<decimal?>("MonthlyFee")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
-
-                    b.Property<DateTime?>("NextBillingDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PaymentGateway")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("PaymentMethodToken")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("Phone")
                         .HasMaxLength(50)
@@ -403,21 +376,6 @@ namespace DataAccess.Migrations
                     b.Property<DateTime?>("StartOfActivities")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateTime?>("SubscriptionCancelledAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("SubscriptionCreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("SubscriptionPlan")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)");
-
-                    b.Property<string>("SubscriptionStatus")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
                     b.Property<string>("SupportEmail")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
@@ -426,9 +384,6 @@ namespace DataAccess.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime?>("TrialEndsAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
