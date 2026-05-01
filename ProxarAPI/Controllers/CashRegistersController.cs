@@ -23,8 +23,7 @@ public class CashRegistersController : BaseApiController
     public async Task<ActionResult<CashRegisterPreviewDto>> GetOpenPreview()
     {
         var companyId = GetCurrentCompanyId();
-        var preview = await _service.GetOpenPreviewAsync(companyId);
-        return Ok(preview);
+        return Ok(await _service.GetOpenPreviewAsync(companyId));
     }
 
     [HttpGet("today")]
@@ -44,8 +43,7 @@ public class CashRegistersController : BaseApiController
         [FromQuery] int pageSize = 20)
     {
         var companyId = GetCurrentCompanyId();
-        var history = await _service.GetHistoryAsync(companyId, page, pageSize);
-        return Ok(history);
+        return Ok(await _service.GetHistoryAsync(companyId, page, pageSize));
     }
 
     [HttpGet("{id}")]
@@ -63,16 +61,9 @@ public class CashRegistersController : BaseApiController
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CashRegisterDto>> Open([FromBody] OpenCashRegisterRequest request)
     {
-        try
-        {
-            var (userId, companyId) = GetCurrentUserAndCompany();
-            var register = await _service.OpenAsync(request, userId, companyId);
-            return CreatedAtAction(nameof(GetById), new { id = register.Id }, register);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var (userId, companyId) = GetCurrentUserAndCompany();
+        var register = await _service.OpenAsync(request, userId, companyId);
+        return CreatedAtAction(nameof(GetById), new { id = register.Id }, register);
     }
 
     [HttpPut("{id}/close")]
@@ -81,19 +72,7 @@ public class CashRegistersController : BaseApiController
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CashRegisterDto>> Close(Guid id, [FromBody] CloseCashRegisterRequest request)
     {
-        try
-        {
-            var (userId, companyId) = GetCurrentUserAndCompany();
-            var register = await _service.CloseAsync(id, request, userId, companyId);
-            return Ok(register);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        var (userId, companyId) = GetCurrentUserAndCompany();
+        return Ok(await _service.CloseAsync(id, request, userId, companyId));
     }
 }
