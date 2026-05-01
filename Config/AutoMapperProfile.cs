@@ -34,6 +34,7 @@ public class AutoMapperProfile : Profile
         CreateMap<Account, AccountDto>();
         CreateMap<CreateAccountRequest, Account>()
             .ForMember(dest => dest.CurrentBalance, opt => opt.MapFrom(src => src.InitialBalance));
+        CreateMap<UpdateAccountRequest, Account>();
 
         // BoxMovement mappings
         CreateMap<BoxMovement, BoxMovementDto>()
