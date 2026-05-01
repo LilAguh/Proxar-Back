@@ -34,6 +34,7 @@ public static class DependencyInjection
     services.AddScoped<IBoxMovementService, BoxMovementService>();
     services.AddScoped<IDashboardService, DashboardService>();
     services.AddScoped<ICashRegisterService, CashRegisterService>();
+    services.AddScoped<IReportService, ReportService>();
 
     return services;
 }
