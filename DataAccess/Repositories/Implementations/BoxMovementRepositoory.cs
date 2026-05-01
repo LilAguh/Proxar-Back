@@ -99,11 +99,47 @@ public class BoxMovementRepository : IBoxMovementRepository
             .Include(bm => bm.Account)
             .Include(bm => bm.Ticket)
             .Include(bm => bm.User)
-            .Where(bm => bm.MovementDate >= from && 
-                         bm.MovementDate <= to && 
+            .Where(bm => bm.MovementDate >= from &&
+                         bm.MovementDate <= to &&
                          bm.CompanyId == companyId)
             .OrderByDescending(bm => bm.MovementDate)
             .ToListAsync();
+    }
+
+    public async Task<List<BoxMovement>> GetFilteredAsync(
+        Guid companyId,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        Guid? accountId,
+        Guid? ticketId,
+        string? type,
+        string? paymentMethod)
+    {
+        var query = _context.BoxMovements
+            .Include(bm => bm.Account)
+            .Include(bm => bm.Ticket)
+            .Include(bm => bm.User)
+            .Where(bm => bm.CompanyId == companyId);
+
+        if (dateFrom.HasValue)
+            query = query.Where(bm => bm.MovementDate >= dateFrom.Value);
+
+        if (dateTo.HasValue)
+            query = query.Where(bm => bm.MovementDate <= dateTo.Value);
+
+        if (accountId.HasValue)
+            query = query.Where(bm => bm.AccountId == accountId.Value);
+
+        if (ticketId.HasValue)
+            query = query.Where(bm => bm.TicketId == ticketId.Value);
+
+        if (!string.IsNullOrWhiteSpace(type) && Enum.TryParse<MovementType>(type, out var movementType))
+            query = query.Where(bm => bm.Type == movementType);
+
+        if (!string.IsNullOrWhiteSpace(paymentMethod) && Enum.TryParse<PaymentMethod>(paymentMethod, out var method))
+            query = query.Where(bm => bm.Method == method);
+
+        return await query.OrderByDescending(bm => bm.MovementDate).ToListAsync();
     }
 
     public async Task<BoxMovement> AddAsync(BoxMovement movement)
