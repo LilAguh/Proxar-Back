@@ -98,34 +98,6 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             .IsRequired()
             .HasMaxLength(20);
 
-        // Suscripción
-        builder.Property(c => c.SubscriptionStatus)
-            .IsRequired()
-            .HasConversion<string>()
-            .HasMaxLength(20);
-
-        builder.Property(c => c.SubscriptionPlan)
-            .HasMaxLength(50);
-
-        builder.Property(c => c.MonthlyFee)
-            .HasPrecision(18, 2);
-
-        // Pasarela de pago
-        builder.Property(c => c.PaymentGateway)
-            .HasMaxLength(50);
-
-        builder.Property(c => c.CustomerGatewayToken)
-            .HasMaxLength(255);
-
-        builder.Property(c => c.PaymentMethodToken)
-            .HasMaxLength(255);
-
-        builder.Property(c => c.LastFourDigits)
-            .HasMaxLength(4);
-
-        builder.Property(c => c.CardBrand)
-            .HasMaxLength(50);
-
         // Soft delete
         builder.Property(c => c.UpdatedAt)
             .IsRequired();
