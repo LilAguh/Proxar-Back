@@ -15,6 +15,7 @@ public class TicketService : ITicketService
     private readonly IClientRepository _clientRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITicketHistoryRepository _historyRepository;
+    private readonly IBoxMovementRepository _boxMovementRepository;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -22,12 +23,14 @@ public class TicketService : ITicketService
         IClientRepository clientRepository,
         IUserRepository userRepository,
         ITicketHistoryRepository historyRepository,
+        IBoxMovementRepository boxMovementRepository,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
         _clientRepository = clientRepository;
         _userRepository = userRepository;
         _historyRepository = historyRepository;
+        _boxMovementRepository = boxMovementRepository;
         _mapper = mapper;
     }
 
@@ -44,10 +47,13 @@ public class TicketService : ITicketService
         var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
-        var history = await _historyRepository.GetByTicketIdAsync(id);
+        var historyTask = _historyRepository.GetByTicketIdAsync(id);
+        var movementsTask = _boxMovementRepository.GetByTicketAsync(id, companyId);
+        await Task.WhenAll(historyTask, movementsTask);
 
         var dto = _mapper.Map<TicketDetailsDto>(ticket);
-        dto.History = _mapper.Map<List<TicketHistoryDto>>(history);
+        dto.History = _mapper.Map<List<TicketHistoryDto>>(historyTask.Result);
+        dto.Movements = _mapper.Map<List<BoxMovementDto>>(movementsTask.Result);
 
         return dto;
     }
