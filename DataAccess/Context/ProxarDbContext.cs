@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Models;
+using DataAccess.Configurations;
 
 namespace DataAccess.Context;
 
@@ -17,6 +18,8 @@ public class ProxarDbContext : DbContext
     public DbSet<CashRegister> CashRegisters { get; set; }
     public DbSet<CashRegisterEntry> CashRegisterEntries { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Subscription> Subscriptions { get; set; }
+    public DbSet<SubscriptionPayment> SubscriptionPayments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,16 +28,19 @@ public class ProxarDbContext : DbContext
         // ============================================
         // COMPANY
         // ============================================
-        modelBuilder.Entity<Company>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.Slug).IsUnique();
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Slug).IsRequired().HasMaxLength(100);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        modelBuilder.ApplyConfiguration(new CompanyConfiguration());
+        modelBuilder.Entity<Company>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        // ============================================
+        // SUBSCRIPTION
+        // ============================================
+        modelBuilder.ApplyConfiguration(new SubscriptionConfiguration());
+
+        // ============================================
+        // SUBSCRIPTION PAYMENT
+        // ============================================
+        modelBuilder.ApplyConfiguration(new SubscriptionPaymentConfiguration());
 
         // ============================================
         // USER
