@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -19,11 +20,14 @@ public class MovementsController : BaseApiController
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetAll()
+    [ProducesResponseType(typeof(PagedResultDto<BoxMovementDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResultDto<BoxMovementDto>>> GetAll(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] MovementType? type = null)
     {
         var companyId = GetCurrentCompanyId();
-        return Ok(await _movementService.GetAllByCompanyAsync(companyId));
+        return Ok(await _movementService.GetPagedByCompanyAsync(companyId, page, pageSize, type));
     }
 
     [HttpGet("{id}")]
@@ -49,6 +53,16 @@ public class MovementsController : BaseApiController
     {
         var companyId = GetCurrentCompanyId();
         return Ok(await _movementService.GetByTicketAsync(ticketId, companyId));
+    }
+
+    [HttpGet("date-range")]
+    [ProducesResponseType(typeof(IEnumerable<BoxMovementDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<BoxMovementDto>>> GetByDateRange(
+        [FromQuery] DateTime startDate,
+        [FromQuery] DateTime endDate)
+    {
+        var companyId = GetCurrentCompanyId();
+        return Ok(await _movementService.GetByDateRangeAsync(startDate, endDate, companyId));
     }
 
     [HttpPost]

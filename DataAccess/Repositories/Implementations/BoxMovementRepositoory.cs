@@ -2,6 +2,7 @@ using DataAccess.Context;
 using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Models;
+using Models.Enums;
 
 namespace DataAccess.Repositories.Implementations;
 
@@ -40,6 +41,34 @@ public class BoxMovementRepository : IBoxMovementRepository
             .Where(bm => bm.CompanyId == companyId)
             .OrderByDescending(bm => bm.MovementDate)
             .ToListAsync();
+    }
+
+    public async Task<(IEnumerable<BoxMovement> Items, int TotalCount)> GetPagedByCompanyAsync(
+        Guid companyId,
+        int page,
+        int pageSize,
+        MovementType? type = null)
+    {
+        var query = _context.BoxMovements
+            .Include(bm => bm.Account)
+            .Include(bm => bm.Ticket)
+            .Include(bm => bm.User)
+            .Where(bm => bm.CompanyId == companyId);
+
+        if (type.HasValue)
+        {
+            query = query.Where(bm => bm.Type == type.Value);
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(bm => bm.MovementDate)
+            .ThenByDescending(bm => bm.RegisteredAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
     }
 
     public async Task<IEnumerable<BoxMovement>> GetByAccountAsync(Guid accountId, Guid companyId)

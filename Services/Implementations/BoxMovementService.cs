@@ -2,6 +2,7 @@ using AutoMapper;
 using DataAccess.Repositories.Interfaces;
 using Exceptions;
 using Models;
+using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -41,6 +42,25 @@ public class BoxMovementService : IBoxMovementService
         return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
     }
 
+    public async Task<PagedResultDto<BoxMovementDto>> GetPagedByCompanyAsync(Guid companyId, int page, int pageSize, MovementType? type = null)
+    {
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
+
+        var (items, totalCount) = await _movementRepository.GetPagedByCompanyAsync(companyId, safePage, safePageSize, type);
+        var mappedItems = _mapper.Map<List<BoxMovementDto>>(items);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)safePageSize);
+
+        return new PagedResultDto<BoxMovementDto>
+        {
+            Items = mappedItems,
+            Page = safePage,
+            PageSize = safePageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages == 0 ? 1 : totalPages
+        };
+    }
+
     public async Task<IEnumerable<BoxMovementDto>> GetByAccountAsync(Guid accountId, Guid companyId)
     {
         var movements = await _movementRepository.GetByAccountAsync(accountId, companyId);
@@ -50,6 +70,12 @@ public class BoxMovementService : IBoxMovementService
     public async Task<IEnumerable<BoxMovementDto>> GetByTicketAsync(Guid ticketId, Guid companyId)
     {
         var movements = await _movementRepository.GetByTicketAsync(ticketId, companyId);
+        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
+    }
+
+    public async Task<IEnumerable<BoxMovementDto>> GetByDateRangeAsync(DateTime from, DateTime to, Guid companyId)
+    {
+        var movements = await _movementRepository.GetByDateRangeAsync(from, to, companyId);
         return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
     }
 
