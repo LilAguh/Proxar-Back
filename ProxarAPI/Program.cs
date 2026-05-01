@@ -190,6 +190,7 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<ProxarDbContext>();
+        context.Database.Migrate();
 
         if (app.Environment.IsDevelopment())
         {
