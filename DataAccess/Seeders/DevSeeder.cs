@@ -58,11 +58,6 @@ public static class DevSeeder
             TimeZoneId = "America/Argentina/Buenos_Aires",
             Language = "es-AR",
             DateFormat = "dd/MM/yyyy",
-
-            // Suscripción
-            SubscriptionStatus = SubscriptionStatus.Trial,
-            TrialEndsAt = DateTime.UtcNow.AddDays(30),
-            SubscriptionPlan = "pro",
         };
 
         var company2 = new Company
@@ -95,13 +90,6 @@ public static class DevSeeder
             TimeZoneId = "America/Argentina/Buenos_Aires",
             Language = "es-AR",
             DateFormat = "dd/MM/yyyy",
-
-            // Suscripción
-            SubscriptionStatus = SubscriptionStatus.Active,
-            SubscriptionPlan = "basic",
-            MonthlyFee = 29999m,
-            NextBillingDate = DateTime.UtcNow.AddMonths(1),
-            SubscriptionCreatedAt = DateTime.UtcNow.AddMonths(-6),
         };
 
         var company3 = new Company
@@ -132,16 +120,97 @@ public static class DevSeeder
             TimeZoneId = "America/Argentina/Buenos_Aires",
             Language = "es-AR",
             DateFormat = "dd/MM/yyyy",
-
-            // Suscripción
-            SubscriptionStatus = SubscriptionStatus.Trial,
-            TrialEndsAt = DateTime.UtcNow.AddDays(15),
-            SubscriptionPlan = "basic",
         };
 
         context.Companies.AddRange(company1, company2, company3);
         context.SaveChanges(); // Guardar companies primero
         Console.WriteLine("✅ 3 empresas creadas");
+
+        // ============================================
+        // SUSCRIPCIONES
+        // ============================================
+        var subscription1 = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company1.Id,
+            Plan = SubscriptionPlan.Pro,
+            Status = SubscriptionStatus.Trial,
+            MonthlyFee = 49999m,
+            IsOnTrial = true,
+            TrialStartedAt = DateTime.UtcNow.AddDays(-1),
+            TrialEndsAt = DateTime.UtcNow.AddDays(29),
+            CurrentPeriodStart = DateTime.UtcNow.AddDays(-1),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(29),
+            NextBillingDate = DateTime.UtcNow.AddDays(30),
+            FailedPaymentAttempts = 0,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var subscription2 = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company2.Id,
+            Plan = SubscriptionPlan.Basic,
+            Status = SubscriptionStatus.Active,
+            MonthlyFee = 29999m,
+            IsOnTrial = false,
+            CurrentPeriodStart = DateTime.UtcNow.AddDays(-15),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(15),
+            NextBillingDate = DateTime.UtcNow.AddDays(16),
+            MercadoPagoPreapprovalId = "fake-preapproval-id-123",
+            MercadoPagoCustomerId = "fake-customer-id-456",
+            LastFourDigits = "1234",
+            CardBrand = "visa",
+            CardHolderName = "Carlos Vidrios",
+            FailedPaymentAttempts = 0,
+            LastSuccessfulPaymentAt = DateTime.UtcNow.AddMonths(-1),
+            CreatedAt = DateTime.UtcNow.AddMonths(-6),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var subscription3 = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company3.Id,
+            Plan = SubscriptionPlan.Basic,
+            Status = SubscriptionStatus.Trial,
+            MonthlyFee = 29999m,
+            IsOnTrial = true,
+            TrialStartedAt = DateTime.UtcNow.AddDays(-16),
+            TrialEndsAt = DateTime.UtcNow.AddDays(-1), // Trial ya expiró (debería pasar a Expired)
+            CurrentPeriodStart = DateTime.UtcNow.AddDays(-16),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-1),
+            FailedPaymentAttempts = 0,
+            CreatedAt = DateTime.UtcNow.AddDays(-16),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        context.Subscriptions.AddRange(subscription1, subscription2, subscription3);
+        context.SaveChanges();
+        Console.WriteLine("✅ 3 suscripciones creadas");
+
+        // Crear un pago de ejemplo para Vidrios del Norte
+        var payment1 = new SubscriptionPayment
+        {
+            Id = Guid.NewGuid(),
+            SubscriptionId = subscription2.Id,
+            CompanyId = company2.Id,
+            Amount = 29999m,
+            Currency = "ARS",
+            Status = PaymentStatus.Success,
+            PeriodStart = DateTime.UtcNow.AddMonths(-2).AddDays(-15),
+            PeriodEnd = DateTime.UtcNow.AddMonths(-1).AddDays(-15),
+            MercadoPagoPaymentId = "fake-payment-id-789",
+            MercadoPagoStatus = "approved",
+            AttemptedAt = DateTime.UtcNow.AddMonths(-1),
+            CompletedAt = DateTime.UtcNow.AddMonths(-1),
+            CreatedAt = DateTime.UtcNow.AddMonths(-1)
+        };
+
+        context.SubscriptionPayments.Add(payment1);
+        context.SaveChanges();
+        Console.WriteLine("✅ 1 pago de suscripción creado");
 
         // Usar company1 (Sagitario) como empresa principal para los datos de prueba
         var company = company1;
