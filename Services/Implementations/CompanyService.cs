@@ -73,10 +73,20 @@ public class CompanyService : ICompanyService
 
         // Datos fiscales
         company.CUIT = request.CUIT;
-        if (!string.IsNullOrWhiteSpace(request.IVA) && Enum.TryParse<Models.Enums.IVACondition>(request.IVA, out var ivaCondition))
+
+        if (!string.IsNullOrWhiteSpace(request.IVA))
         {
+            if (!Enum.TryParse<Models.Enums.IVACondition>(request.IVA, out var ivaCondition))
+            {
+                throw new BusinessRuleException($"Condición de IVA inválida: '{request.IVA}'. Valores válidos: {string.Join(", ", Enum.GetNames<Models.Enums.IVACondition>())}");
+            }
             company.IVA = ivaCondition;
         }
+        else
+        {
+            company.IVA = null;
+        }
+
         company.IIBB = request.IIBB;
         company.FiscalAddress = request.FiscalAddress;
         company.FiscalCity = request.FiscalCity;
