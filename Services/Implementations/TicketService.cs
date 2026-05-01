@@ -1,5 +1,6 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
+using Exceptions;
 using Models;
 using Models.Enums;
 using Services.DTOs.Requests;
@@ -32,18 +33,16 @@ public class TicketService : ITicketService
 
     public async Task<TicketDto> GetByIdAsync(Guid id, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
-        if (ticket == null)
-            throw new KeyNotFoundException("Ticket no encontrado");
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
         return _mapper.Map<TicketDto>(ticket);
     }
 
     public async Task<TicketDetailsDto> GetDetailsAsync(Guid id, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
-        if (ticket == null)
-            throw new KeyNotFoundException("Ticket no encontrado");
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
         var history = await _historyRepository.GetByTicketIdAsync(id);
 
@@ -79,17 +78,13 @@ public class TicketService : ITicketService
 
     public async Task<TicketDto> CreateTicketAsync(CreateTicketRequest request, Guid userId, Guid companyId)
     {
-        // Verificar que el cliente existe y pertenece a la empresa
-        var client = await _clientRepository.GetByIdAsync(request.ClientId, companyId);
-        if (client == null)
-            throw new KeyNotFoundException("Cliente no encontrado");
+        var client = await _clientRepository.GetByIdAsync(request.ClientId, companyId)
+            ?? throw new NotFoundException(AppMessages.Client.NotFound);
 
-        // Verificar que el usuario asignado existe (si se especifica)
         if (request.AssignedToId.HasValue)
         {
-            var assignedUser = await _userRepository.GetByIdAsync(request.AssignedToId.Value, companyId);
-            if (assignedUser == null)
-                throw new KeyNotFoundException("Usuario asignado no encontrado");
+            var assignedUser = await _userRepository.GetByIdAsync(request.AssignedToId.Value, companyId)
+                ?? throw new NotFoundException(AppMessages.Ticket.AssignedUserNotFound);
         }
 
         var ticket = new Ticket
@@ -111,7 +106,6 @@ public class TicketService : ITicketService
 
         var createdTicket = await _ticketRepository.AddAsync(ticket);
 
-        // Crear historial
         var history = new TicketHistory
         {
             CompanyId = companyId,
@@ -128,9 +122,8 @@ public class TicketService : ITicketService
 
     public async Task<TicketDto> UpdateTicketAsync(Guid id, UpdateTicketRequest request, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
-        if (ticket == null)
-            throw new KeyNotFoundException("Ticket no encontrado");
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
         ticket.Title = request.Title;
         ticket.Description = request.Description;
@@ -139,10 +132,9 @@ public class TicketService : ITicketService
 
         if (request.AssignedToId.HasValue)
         {
-            var assignedUser = await _userRepository.GetByIdAsync(request.AssignedToId.Value, companyId);
-            if (assignedUser == null)
-                throw new KeyNotFoundException("Usuario asignado no encontrado");
-            
+            var assignedUser = await _userRepository.GetByIdAsync(request.AssignedToId.Value, companyId)
+                ?? throw new NotFoundException(AppMessages.Ticket.AssignedUserNotFound);
+
             ticket.AssignedToId = request.AssignedToId.Value;
         }
 
@@ -152,21 +144,17 @@ public class TicketService : ITicketService
 
     public async Task<TicketDto> UpdateTicketStatusAsync(Guid id, UpdateTicketStatusRequest request, Guid userId, Guid companyId)
     {
-        var ticket = await _ticketRepository.GetByIdAsync(id, companyId);
-        if (ticket == null)
-            throw new KeyNotFoundException("Ticket no encontrado");
+        var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
         var previousStatus = ticket.Status;
         ticket.Status = request.NewStatus;
 
         if (request.NewStatus == TicketState.Completado)
-        {
             ticket.CompletedAt = DateTime.UtcNow;
-        }
 
         await _ticketRepository.UpdateAsync(ticket);
 
-        // Crear historial
         var history = new TicketHistory
         {
             CompanyId = companyId,
