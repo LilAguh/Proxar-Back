@@ -34,11 +34,4 @@ public class CompanyDto
     public string TimeZoneId { get; set; } = "America/Argentina/Buenos_Aires";
     public string Language { get; set; } = "es-AR";
     public string DateFormat { get; set; } = "dd/MM/yyyy";
-
-    // Suscripción (info visible para admin)
-    public string SubscriptionStatus { get; set; } = "Trial";
-    public DateTime? TrialEndsAt { get; set; }
-    public string? SubscriptionPlan { get; set; }
-    public decimal? MonthlyFee { get; set; }
-    public DateTime? NextBillingDate { get; set; }
 }
