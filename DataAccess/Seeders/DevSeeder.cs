@@ -14,6 +14,11 @@ public static class DevSeeder
         // ============================================
         ResetSequences(context);
 
+        // ============================================
+        // SUSCRIPCIONES (SIEMPRE) - para empresas existentes
+        // ============================================
+        EnsureSubscriptions(context);
+
         // Verificar si ya hay datos
         if (context.Users.Any())
         {
@@ -610,6 +615,59 @@ public static class DevSeeder
         Console.WriteLine($"   - Saldo Total Sagitario: ${cuentaEfectivo.CurrentBalance + cuentaBanco.CurrentBalance + cuentaMercadoPago.CurrentBalance:N0}");
     }
 
+    private static void EnsureSubscriptions(ProxarDbContext context)
+    {
+        try
+        {
+            // Crear suscripciones para empresas que no las tengan
+            var companiesWithoutSubscription = context.Companies
+                .Where(c => !context.Subscriptions.Any(s => s.CompanyId == c.Id))
+                .ToList();
+
+            if (!companiesWithoutSubscription.Any())
+            {
+                Console.WriteLine("✅ Todas las empresas tienen suscripciones");
+                return;
+            }
+
+            var subscriptionsToAdd = new List<Subscription>();
+            var paymentsToAdd = new List<SubscriptionPayment>();
+
+            foreach (var company in companiesWithoutSubscription)
+            {
+                // Crear suscripción Trial para nuevas empresas
+                var subscription = new Subscription
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = company.Id,
+                    Plan = SubscriptionPlan.Basic,
+                    Status = SubscriptionStatus.Trial,
+                    MonthlyFee = 29999m,
+                    IsOnTrial = true,
+                    TrialStartedAt = DateTime.UtcNow,
+                    TrialEndsAt = DateTime.UtcNow.AddDays(30),
+                    CurrentPeriodStart = DateTime.UtcNow,
+                    CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
+                    NextBillingDate = DateTime.UtcNow.AddDays(31),
+                    FailedPaymentAttempts = 0,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                subscriptionsToAdd.Add(subscription);
+            }
+
+            context.Subscriptions.AddRange(subscriptionsToAdd);
+            context.SaveChanges();
+
+            Console.WriteLine($"✅ Creadas {subscriptionsToAdd.Count} suscripciones Trial para empresas existentes");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error creando suscripciones: {ex.Message}");
+        }
+    }
+
     private static void ResetSequences(ProxarDbContext context)
     {
         try
@@ -617,8 +675,8 @@ public static class DevSeeder
             // Reset Tickets.Number sequence
             context.Database.ExecuteSqlRaw(@"
                 SELECT setval(
-                    pg_get_serial_sequence('""Tickets""', 'Number'), 
-                    COALESCE((SELECT MAX(""Number"") FROM ""Tickets""), 0) + 1, 
+                    pg_get_serial_sequence('""Tickets""', 'Number'),
+                    COALESCE((SELECT MAX(""Number"") FROM ""Tickets""), 0) + 1,
                     false
                 );
             ");
@@ -626,8 +684,8 @@ public static class DevSeeder
             // Reset BoxMovements.Number sequence
             context.Database.ExecuteSqlRaw(@"
                 SELECT setval(
-                    pg_get_serial_sequence('""BoxMovements""', 'Number'), 
-                    COALESCE((SELECT MAX(""Number"") FROM ""BoxMovements""), 0) + 1, 
+                    pg_get_serial_sequence('""BoxMovements""', 'Number'),
+                    COALESCE((SELECT MAX(""Number"") FROM ""BoxMovements""), 0) + 1,
                     false
                 );
             ");
