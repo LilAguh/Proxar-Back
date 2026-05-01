@@ -1,5 +1,6 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
+using Exceptions;
 using Models;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
@@ -20,9 +21,8 @@ public class ClientService : IClientService
 
     public async Task<ClientDto> GetByIdAsync(Guid id, Guid companyId)
     {
-        var client = await _clientRepository.GetByIdAsync(id, companyId);
-        if (client == null)
-            throw new KeyNotFoundException("Cliente no encontrado");
+        var client = await _clientRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Client.NotFound);
 
         return _mapper.Map<ClientDto>(client);
     }
@@ -60,9 +60,8 @@ public class ClientService : IClientService
 
     public async Task<ClientDto> UpdateClientAsync(Guid id, UpdateClientRequest request, Guid companyId)
     {
-        var client = await _clientRepository.GetByIdAsync(id, companyId);
-        if (client == null)
-            throw new KeyNotFoundException("Cliente no encontrado");
+        var client = await _clientRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Client.NotFound);
 
         client.Name = request.Name;
         client.Phone = request.Phone;
