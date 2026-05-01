@@ -1,5 +1,6 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
+using Exceptions;
 using Models;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
@@ -28,9 +29,8 @@ public class BoxMovementService : IBoxMovementService
 
     public async Task<BoxMovementDto> GetByIdAsync(Guid id, Guid companyId)
     {
-        var movement = await _movementRepository.GetByIdAsync(id, companyId);
-        if (movement == null)
-            throw new KeyNotFoundException("Movimiento no encontrado");
+        var movement = await _movementRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Movement.NotFound);
 
         return _mapper.Map<BoxMovementDto>(movement);
     }
@@ -55,17 +55,13 @@ public class BoxMovementService : IBoxMovementService
 
     public async Task<BoxMovementDto> RegisterMovementAsync(RegisterMovementRequest request, Guid userId, Guid companyId)
     {
-        // Verificar que la cuenta existe
-        var account = await _accountRepository.GetByIdAsync(request.AccountId, companyId);
-        if (account == null)
-            throw new KeyNotFoundException("Cuenta no encontrada");
+        var account = await _accountRepository.GetByIdAsync(request.AccountId, companyId)
+            ?? throw new NotFoundException(AppMessages.Account.NotFound);
 
-        // Verificar que el ticket existe (si se especifica)
         if (request.TicketId.HasValue)
         {
-            var ticket = await _ticketRepository.GetByIdAsync(request.TicketId.Value, companyId);
-            if (ticket == null)
-                throw new KeyNotFoundException("Ticket no encontrado");
+            var ticket = await _ticketRepository.GetByIdAsync(request.TicketId.Value, companyId)
+                ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
         }
 
         var movement = new BoxMovement
@@ -87,15 +83,11 @@ public class BoxMovementService : IBoxMovementService
 
         var createdMovement = await _movementRepository.AddAsync(movement);
 
-        // Actualizar saldo de la cuenta
         if (movement.Type == Models.Enums.MovementType.Ingreso)
-        {
             account.CurrentBalance += movement.Amount;
-        }
         else
-        {
             account.CurrentBalance -= movement.Amount;
-        }
+
         await _accountRepository.UpdateAsync(account);
 
         return _mapper.Map<BoxMovementDto>(createdMovement);
@@ -103,22 +95,17 @@ public class BoxMovementService : IBoxMovementService
 
     public async Task SoftDeleteMovementAsync(Guid id, Guid companyId, Guid deletedBy)
     {
-        var movement = await _movementRepository.GetByIdAsync(id, companyId);
-        if (movement == null)
-            throw new KeyNotFoundException("Movimiento no encontrado");
+        var movement = await _movementRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Movement.NotFound);
 
-        // Revertir saldo en la cuenta
         var account = await _accountRepository.GetByIdAsync(movement.AccountId, companyId);
         if (account != null)
         {
             if (movement.Type == Models.Enums.MovementType.Ingreso)
-            {
                 account.CurrentBalance -= movement.Amount;
-            }
             else
-            {
                 account.CurrentBalance += movement.Amount;
-            }
+
             await _accountRepository.UpdateAsync(account);
         }
 
