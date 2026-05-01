@@ -19,7 +19,7 @@ public static class DependencyInjection
         services.AddScoped<IBoxMovementRepository, BoxMovementRepository>();
         services.AddScoped<ITicketHistoryRepository, TicketHistoryRepository>();
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
-
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 
         return services;
     }

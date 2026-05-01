@@ -16,6 +16,7 @@ public class ProxarDbContext : DbContext
     public DbSet<BoxMovement> BoxMovements { get; set; }
     public DbSet<CashRegister> CashRegisters { get; set; }
     public DbSet<CashRegisterEntry> CashRegisterEntries { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -212,6 +213,24 @@ public class ProxarDbContext : DbContext
                   .WithMany(a => a.CashRegisterEntries)
                   .HasForeignKey(e => e.AccountId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // ============================================
+        // REFRESH TOKEN
+        // ============================================
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.TokenHash).IsUnique();
+            entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(128);
+            entity.Ignore(e => e.IsRevoked);
+            entity.Ignore(e => e.IsExpired);
+            entity.Ignore(e => e.IsActive);
+
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ============================================

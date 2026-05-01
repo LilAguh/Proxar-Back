@@ -14,4 +14,6 @@ public interface IAuthService
     Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request, Guid companyId);
     Task DeactivateUserAsync(Guid userId, Guid companyId, Guid deletedBy);
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, Guid companyId);
+    Task<AuthResponseDto> RefreshTokenAsync(string refreshToken);
+    Task RevokeTokenAsync(string refreshToken, Guid userId, Guid companyId);
 }

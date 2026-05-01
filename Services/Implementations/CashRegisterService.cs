@@ -1,4 +1,5 @@
 using DataAccess.Repositories.Interfaces;
+using Exceptions;
 using Models;
 using Models.Enums;
 using Services.DTOs.Requests;
@@ -49,7 +50,6 @@ public class CashRegisterService : ICashRegisterService
             }).ToList()
         };
 
-        // Calcular discrepancias: cierre anterior vs saldo actual de cuenta
         if (previous != null)
         {
             foreach (var prevEntry in previous.Entries)
@@ -79,7 +79,7 @@ public class CashRegisterService : ICashRegisterService
         var today = DateTime.UtcNow.Date;
 
         if (await _cashRegisterRepository.GetTodayAsync(companyId) != null)
-            throw new InvalidOperationException("Ya existe una apertura de caja para hoy.");
+            throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
 
         var register = new CashRegister
         {
@@ -103,10 +103,10 @@ public class CashRegisterService : ICashRegisterService
     public async Task<CashRegisterDto> CloseAsync(Guid registerId, CloseCashRegisterRequest request, Guid userId, Guid companyId)
     {
         var register = await _cashRegisterRepository.GetByIdAsync(registerId, companyId)
-            ?? throw new KeyNotFoundException("Registro de caja no encontrado.");
+            ?? throw new NotFoundException(AppMessages.CashRegister.NotFound);
 
         if (register.Status == CashRegisterStatus.Closed)
-            throw new InvalidOperationException("Este registro ya fue cerrado.");
+            throw new BusinessRuleException(AppMessages.CashRegister.AlreadyClosed);
 
         foreach (var closeEntry in request.Entries)
         {
