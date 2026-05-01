@@ -11,6 +11,14 @@ public static class BusinessDateTime
         return DateTime.SpecifyKind(local.Date, DateTimeKind.Unspecified);
     }
 
+    public static DateTime ConvertBusinessDateToUtc(DateTime businessDate, string? timeZoneId)
+    {
+        var timeZone = ResolveTimeZone(timeZoneId);
+        var localDate = DateTime.SpecifyKind(businessDate.Date, DateTimeKind.Unspecified);
+        var utcDate = TimeZoneInfo.ConvertTimeToUtc(localDate, timeZone);
+        return DateTime.SpecifyKind(utcDate.Date, DateTimeKind.Utc);
+    }
+
     public static (DateTime StartUtc, DateTime EndUtc) GetUtcRangeForBusinessDate(DateTime businessDate, string? timeZoneId)
     {
         var timeZone = ResolveTimeZone(timeZoneId);
