@@ -41,22 +41,6 @@ public class Company
     public string Language { get; set; } = "es-AR";
     public string DateFormat { get; set; } = "dd/MM/yyyy";
 
-    // Suscripción (para modelo SaaS)
-    public SubscriptionStatus SubscriptionStatus { get; set; } = SubscriptionStatus.Trial;
-    public DateTime? TrialEndsAt { get; set; }
-    public string? SubscriptionPlan { get; set; } // "basic", "pro", "enterprise"
-    public decimal? MonthlyFee { get; set; }
-    public DateTime? NextBillingDate { get; set; }
-
-    // Pasarela de pago
-    public string? PaymentGateway { get; set; } // "mercadopago", "stripe", etc.
-    public string? CustomerGatewayToken { get; set; } // ID del customer en la gateway
-    public string? PaymentMethodToken { get; set; } // Token del método de pago
-    public string? LastFourDigits { get; set; }
-    public string? CardBrand { get; set; } // "visa", "mastercard", etc.
-    public DateTime? SubscriptionCreatedAt { get; set; }
-    public DateTime? SubscriptionCancelledAt { get; set; }
-
     // Soft delete
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
