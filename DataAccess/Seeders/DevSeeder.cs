@@ -30,27 +30,113 @@ public static class DevSeeder
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             Name = "Aberturas Sagitario",
+            LegalName = "Aberturas Sagitario S.R.L.",
             Slug = "sagitario",
             Active = true,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = "30-71234567-8",
+            IVA = IVACondition.ResponsableInscripto,
+            IIBB = "CM-123456",
+            FiscalAddress = "Av. Colón 1234",
+            FiscalCity = "Córdoba",
+            FiscalProvince = "Córdoba",
+            FiscalPostalCode = "X5000",
+            StartOfActivities = new DateTime(1989, 3, 15),
+            DefaultSalesPoint = 1,
+
+            // Contacto
+            Email = "contacto@sagitario.com.ar",
+            Phone = "+54 351 4567890",
+            MobilePhone = "+54 9 351 6789012",
+            SupportEmail = "soporte@sagitario.com.ar",
+
+            // Configuración regional
+            Currency = "ARS",
+            TimeZoneId = "America/Argentina/Buenos_Aires",
+            Language = "es-AR",
+            DateFormat = "dd/MM/yyyy",
+
+            // Suscripción
+            SubscriptionStatus = SubscriptionStatus.Trial,
+            TrialEndsAt = DateTime.UtcNow.AddDays(30),
+            SubscriptionPlan = "pro",
         };
 
         var company2 = new Company
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
             Name = "Vidrios del Norte",
+            LegalName = "Vidrios del Norte S.A.",
             Slug = "vidrios-norte",
             Active = true,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = "30-65432109-4",
+            IVA = IVACondition.ResponsableInscripto,
+            IIBB = "SA-987654",
+            FiscalAddress = "Ruta 9 Km 1240",
+            FiscalCity = "Salta",
+            FiscalProvince = "Salta",
+            FiscalPostalCode = "A4400",
+            StartOfActivities = new DateTime(2005, 7, 20),
+            DefaultSalesPoint = 1,
+
+            // Contacto
+            Email = "info@vidriosdelnorte.com",
+            Phone = "+54 387 4321000",
+
+            // Configuración regional
+            Currency = "ARS",
+            TimeZoneId = "America/Argentina/Buenos_Aires",
+            Language = "es-AR",
+            DateFormat = "dd/MM/yyyy",
+
+            // Suscripción
+            SubscriptionStatus = SubscriptionStatus.Active,
+            SubscriptionPlan = "basic",
+            MonthlyFee = 29999m,
+            NextBillingDate = DateTime.UtcNow.AddMonths(1),
+            SubscriptionCreatedAt = DateTime.UtcNow.AddMonths(-6),
         };
 
         var company3 = new Company
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
             Name = "AlumCor S.A.",
+            LegalName = "AlumCor Sociedad Anónima",
             Slug = "alumcor",
             Active = true,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = "30-55555555-5",
+            IVA = IVACondition.Monotributista,
+            FiscalAddress = "Bv. San Juan 567",
+            FiscalCity = "Córdoba",
+            FiscalProvince = "Córdoba",
+            FiscalPostalCode = "X5000",
+            StartOfActivities = new DateTime(2018, 11, 1),
+
+            // Contacto
+            Email = "ventas@alumcor.com.ar",
+            Phone = "+54 351 4111222",
+
+            // Configuración regional
+            Currency = "ARS",
+            TimeZoneId = "America/Argentina/Buenos_Aires",
+            Language = "es-AR",
+            DateFormat = "dd/MM/yyyy",
+
+            // Suscripción
+            SubscriptionStatus = SubscriptionStatus.Trial,
+            TrialEndsAt = DateTime.UtcNow.AddDays(15),
+            SubscriptionPlan = "basic",
         };
 
         context.Companies.AddRange(company1, company2, company3);
