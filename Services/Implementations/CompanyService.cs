@@ -1,5 +1,6 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
+using Exceptions;
 using Models;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
@@ -20,18 +21,16 @@ public class CompanyService : ICompanyService
 
     public async Task<CompanyDto> GetByIdAsync(Guid id)
     {
-        var company = await _companyRepository.GetByIdAsync(id);
-        if (company == null)
-            throw new KeyNotFoundException("Empresa no encontrada");
+        var company = await _companyRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
 
         return _mapper.Map<CompanyDto>(company);
     }
 
     public async Task<CompanyDto> GetBySlugAsync(string slug)
     {
-        var company = await _companyRepository.GetBySlugAsync(slug);
-        if (company == null)
-            throw new KeyNotFoundException("Empresa no encontrada");
+        var company = await _companyRepository.GetBySlugAsync(slug)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
 
         return _mapper.Map<CompanyDto>(company);
     }
@@ -44,10 +43,9 @@ public class CompanyService : ICompanyService
 
     public async Task<CompanyDto> CreateCompanyAsync(CreateCompanyRequest request)
     {
-        // Verificar si el slug ya existe
         var existing = await _companyRepository.GetBySlugAsync(request.Slug);
         if (existing != null)
-            throw new InvalidOperationException("El slug ya está en uso");
+            throw new ConflictException(AppMessages.Company.SlugAlreadyInUse);
 
         var company = new Company
         {
@@ -64,9 +62,8 @@ public class CompanyService : ICompanyService
 
     public async Task<CompanyDto> UpdateCompanyAsync(Guid id, UpdateCompanyRequest request)
     {
-        var company = await _companyRepository.GetByIdAsync(id);
-        if (company == null)
-            throw new KeyNotFoundException("Empresa no encontrada");
+        var company = await _companyRepository.GetByIdAsync(id)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
 
         company.Name = request.Name;
         company.LogoUrl = request.LogoUrl;
