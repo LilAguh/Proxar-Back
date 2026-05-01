@@ -24,14 +24,13 @@ public class CashRegisterRepository : ICashRegisterRepository
             .FirstOrDefaultAsync(r => r.Id == id && r.CompanyId == companyId);
     }
 
-    public async Task<CashRegister?> GetTodayAsync(Guid companyId)
+    public async Task<CashRegister?> GetTodayAsync(Guid companyId, DateTime businessDate)
     {
-        var today = DateTime.UtcNow.Date;
         return await _context.CashRegisters
             .Include(r => r.Entries).ThenInclude(e => e.Account)
             .Include(r => r.OpenedBy)
             .Include(r => r.ClosedBy)
-            .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.Date == today);
+            .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.Date == businessDate.Date);
     }
 
     public async Task<CashRegister?> GetPreviousClosedAsync(Guid companyId, DateTime beforeDate)

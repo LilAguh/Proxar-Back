@@ -5,6 +5,7 @@ using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -13,21 +14,25 @@ public class CashRegisterService : ICashRegisterService
     private readonly ICashRegisterRepository _cashRegisterRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly IBoxMovementRepository _boxMovementRepository;
+    private readonly ICompanyRepository _companyRepository;
 
     public CashRegisterService(
         ICashRegisterRepository cashRegisterRepository,
         IAccountRepository accountRepository,
-        IBoxMovementRepository boxMovementRepository)
+        IBoxMovementRepository boxMovementRepository,
+        ICompanyRepository companyRepository)
     {
         _cashRegisterRepository = cashRegisterRepository;
         _accountRepository = accountRepository;
         _boxMovementRepository = boxMovementRepository;
+        _companyRepository = companyRepository;
     }
 
     public async Task<CashRegisterPreviewDto> GetOpenPreviewAsync(Guid companyId)
     {
-        var today = DateTime.UtcNow.Date;
-        var existing = await _cashRegisterRepository.GetTodayAsync(companyId);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var today = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var existing = await _cashRegisterRepository.GetTodayAsync(companyId, today);
 
         if (existing != null)
             return new CashRegisterPreviewDto { AlreadyOpenToday = true };
@@ -76,9 +81,10 @@ public class CashRegisterService : ICashRegisterService
 
     public async Task<CashRegisterDto> OpenAsync(OpenCashRegisterRequest request, Guid userId, Guid companyId)
     {
-        var today = DateTime.UtcNow.Date;
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var today = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
 
-        if (await _cashRegisterRepository.GetTodayAsync(companyId) != null)
+        if (await _cashRegisterRepository.GetTodayAsync(companyId, today) != null)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
 
         var register = new CashRegister
@@ -97,7 +103,8 @@ public class CashRegisterService : ICashRegisterService
         };
 
         var created = await _cashRegisterRepository.AddAsync(register);
-        return MapToDto(created, []);
+        var movements = await GetMovementsForBusinessDateAsync(companyId, created.Date, company?.TimeZoneId);
+        return MapToDto(created, movements);
     }
 
     public async Task<CashRegisterDto> CloseAsync(Guid registerId, CloseCashRegisterRequest request, Guid userId, Guid companyId)
@@ -122,20 +129,28 @@ public class CashRegisterService : ICashRegisterService
             register.Notes = request.Notes;
 
         await _cashRegisterRepository.UpdateAsync(register);
-        return MapToDto(register, []);
+        var movements = await GetMovementsForBusinessDateAsync(companyId, register.Date, (await _companyRepository.GetByIdAsync(companyId))?.TimeZoneId);
+        return MapToDto(register, movements);
     }
 
     public async Task<CashRegisterDto?> GetTodayAsync(Guid companyId)
     {
-        var register = await _cashRegisterRepository.GetTodayAsync(companyId);
-        return register == null ? null : MapToDto(register, []);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var today = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var register = await _cashRegisterRepository.GetTodayAsync(companyId, today);
+        if (register == null) return null;
+
+        var movements = await GetMovementsForBusinessDateAsync(companyId, register.Date, company?.TimeZoneId);
+        return MapToDto(register, movements);
     }
 
     public async Task<CashRegisterDto?> GetByIdAsync(Guid id, Guid companyId)
     {
         var register = await _cashRegisterRepository.GetByIdAsync(id, companyId);
         if (register == null) return null;
-        var movements = await _boxMovementRepository.GetByDateRangeAsync(register.Date, register.Date.AddDays(1).AddTicks(-1), companyId);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(register.Date, company?.TimeZoneId);
+        var movements = await _boxMovementRepository.GetByDateRangeAsync(startUtc, endUtc, companyId);
         return MapToDto(register, movements);
     }
 
@@ -143,6 +158,12 @@ public class CashRegisterService : ICashRegisterService
     {
         var registers = await _cashRegisterRepository.GetHistoryAsync(companyId, page, pageSize);
         return registers.Select(r => MapToDto(r, []));
+    }
+
+    private async Task<IEnumerable<BoxMovement>> GetMovementsForBusinessDateAsync(Guid companyId, DateTime businessDate, string? timeZoneId)
+    {
+        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(businessDate, timeZoneId);
+        return await _boxMovementRepository.GetByDateRangeAsync(startUtc, endUtc, companyId);
     }
 
     private static CashRegisterDto MapToDto(CashRegister r, IEnumerable<BoxMovement> movements) => new()

@@ -3,6 +3,7 @@ using DataAccess.Repositories.Interfaces;
 using Models.Enums;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -11,17 +12,20 @@ public class DashboardService : IDashboardService
     private readonly ITicketRepository _ticketRepository;
     private readonly IBoxMovementRepository _movementRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly IMapper _mapper;
 
     public DashboardService(
         ITicketRepository ticketRepository,
         IBoxMovementRepository movementRepository,
         IAccountRepository accountRepository,
+        ICompanyRepository companyRepository,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
         _movementRepository = movementRepository;
         _accountRepository = accountRepository;
+        _companyRepository = companyRepository;
         _mapper = mapper;
     }
 
@@ -29,11 +33,13 @@ public class DashboardService : IDashboardService
     {
         var tickets = await _ticketRepository.GetAllByCompanyAsync(companyId);
         var accounts = await _accountRepository.GetActiveByCompanyAsync(companyId);
-        
-        var today = DateTime.UtcNow.Date;
+
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var today = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(today, company?.TimeZoneId);
         var movements = await _movementRepository.GetByDateRangeAsync(
-            today, 
-            today.AddDays(1).AddSeconds(-1), 
+            startUtc, 
+            endUtc, 
             companyId
         );
 
