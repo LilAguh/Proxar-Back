@@ -16,6 +16,7 @@ public class BoxMovementService : IBoxMovementService
     private readonly IAccountRepository _accountRepository;
     private readonly ITicketRepository _ticketRepository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly ICashRegisterRepository _cashRegisterRepository;
     private readonly IMapper _mapper;
 
     public BoxMovementService(
@@ -23,12 +24,14 @@ public class BoxMovementService : IBoxMovementService
         IAccountRepository accountRepository,
         ITicketRepository ticketRepository,
         ICompanyRepository companyRepository,
+        ICashRegisterRepository cashRegisterRepository,
         IMapper mapper)
     {
         _movementRepository = movementRepository;
         _accountRepository = accountRepository;
         _ticketRepository = ticketRepository;
         _companyRepository = companyRepository;
+        _cashRegisterRepository = cashRegisterRepository;
         _mapper = mapper;
     }
 
@@ -99,6 +102,16 @@ public class BoxMovementService : IBoxMovementService
 
         // Convertir fecha de negocio a UTC usando timezone de la empresa
         var movementDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(request.MovementDate, company.TimeZoneId);
+
+        // VALIDACIÓN CRÍTICA: verificar que la caja esté abierta para la fecha del movimiento
+        var businessDate = BusinessDateTime.GetBusinessDate(movementDateUtc, company.TimeZoneId);
+        var businessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company.TimeZoneId);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateUtc);
+
+        if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
+        {
+            throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
+        }
 
         var movement = new BoxMovement
         {

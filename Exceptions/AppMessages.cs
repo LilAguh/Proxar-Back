@@ -52,5 +52,6 @@ public static class AppMessages
         public const string NotFound = "Registro de caja no encontrado";
         public const string AlreadyOpenToday = "Ya existe una apertura de caja para hoy";
         public const string AlreadyClosed = "Este registro ya fue cerrado";
+        public const string NotOpenForDate = "No se puede registrar un movimiento sin haber abierto la caja del día";
     }
 }
