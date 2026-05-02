@@ -11,7 +11,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        services.AddScoped<ICompanyRepository, CompanyRepository>(); // ← NUEVO
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<ITicketRepository, TicketRepository>();
@@ -20,13 +20,14 @@ public static class DependencyInjection
         services.AddScoped<ITicketHistoryRepository, TicketHistoryRepository>();
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 
         return services;
     }
 
     public static IServiceCollection AddServices(this IServiceCollection services)
 {
-    services.AddScoped<ICompanyService, CompanyService>(); // ← NUEVO
+    services.AddScoped<ICompanyService, CompanyService>();
     services.AddScoped<IAuthService, AuthService>();
     services.AddScoped<IClientService, ClientService>();
     services.AddScoped<ITicketService, TicketService>();
@@ -35,6 +36,7 @@ public static class DependencyInjection
     services.AddScoped<IDashboardService, DashboardService>();
     services.AddScoped<ICashRegisterService, CashRegisterService>();
     services.AddScoped<IReportService, ReportService>();
+    services.AddScoped<ISubscriptionService, SubscriptionService>();
 
     return services;
 }
