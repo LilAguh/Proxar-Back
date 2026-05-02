@@ -20,7 +20,11 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("La contraseña es requerida")
             .MinimumLength(8).WithMessage("La contraseña debe tener al menos 8 caracteres")
-            .MaximumLength(100).WithMessage("La contraseña no puede exceder 100 caracteres");
+            .MaximumLength(100).WithMessage("La contraseña no puede exceder 100 caracteres")
+            .Matches("[A-Z]").WithMessage("La contraseña debe tener al menos una mayúscula")
+            .Matches("[a-z]").WithMessage("La contraseña debe tener al menos una minúscula")
+            .Matches("[0-9]").WithMessage("La contraseña debe tener al menos un número")
+            .Matches("[^a-zA-Z0-9]").WithMessage("La contraseña debe tener al menos un caracter especial");
 
         RuleFor(x => x.CompanyName)
             .NotEmpty().WithMessage("El nombre de la empresa es requerido")
