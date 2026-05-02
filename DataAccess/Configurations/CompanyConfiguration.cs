@@ -66,7 +66,7 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
             .HasMaxLength(500);
 
         builder.Property(c => c.CertPassword)
-            .HasMaxLength(500);
+            .HasMaxLength(1000); // Increased for encrypted data (AES-256 + Base64)
 
         // Contacto
         builder.Property(c => c.Email)

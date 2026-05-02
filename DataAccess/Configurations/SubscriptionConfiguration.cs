@@ -31,19 +31,19 @@ public class SubscriptionConfiguration : IEntityTypeConfiguration<Subscription>
             .IsRequired()
             .HasPrecision(18, 2);
 
-        // Mercado Pago
+        // Mercado Pago (increased sizes for encrypted data)
         builder.Property(s => s.MercadoPagoPreapprovalId)
-            .HasMaxLength(100);
+            .HasMaxLength(300); // Encrypted (AES-256 + Base64)
 
         builder.HasIndex(s => s.MercadoPagoPreapprovalId)
             .IsUnique()
             .HasFilter("\"MercadoPagoPreapprovalId\" IS NOT NULL");
 
         builder.Property(s => s.MercadoPagoCustomerId)
-            .HasMaxLength(100);
+            .HasMaxLength(300); // Encrypted (AES-256 + Base64)
 
         builder.Property(s => s.MercadoPagoCardToken)
-            .HasMaxLength(255);
+            .HasMaxLength(500); // Encrypted (AES-256 + Base64)
 
         builder.Property(s => s.LastFourDigits)
             .HasMaxLength(4);
