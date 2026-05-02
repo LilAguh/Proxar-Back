@@ -217,14 +217,9 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
     {
         var tokenHash = HashToken(refreshToken);
-        var stored = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash)
-            ?? throw new UnauthorizedAccessException(AppMessages.Auth.InvalidRefreshToken);
-
-        if (!stored.IsActive)
+        var stored = await _refreshTokenRepository.RevokeIfActiveAsync(tokenHash);
+        if (stored == null)
             throw new UnauthorizedAccessException(AppMessages.Auth.InvalidRefreshToken);
-
-        stored.RevokedAt = DateTime.UtcNow;
-        await _refreshTokenRepository.UpdateAsync(stored);
 
         return await BuildAuthResponseAsync(stored.User);
     }
