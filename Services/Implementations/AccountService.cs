@@ -2,6 +2,7 @@ using AutoMapper;
 using DataAccess.Repositories.Interfaces;
 using Exceptions;
 using Models;
+using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -11,11 +12,16 @@ namespace Services.Implementations;
 public class AccountService : IAccountService
 {
     private readonly IAccountRepository _accountRepository;
+    private readonly IBoxMovementRepository _movementRepository;
     private readonly IMapper _mapper;
 
-    public AccountService(IAccountRepository accountRepository, IMapper mapper)
+    public AccountService(
+        IAccountRepository accountRepository,
+        IBoxMovementRepository movementRepository,
+        IMapper mapper)
     {
         _accountRepository = accountRepository;
+        _movementRepository = movementRepository;
         _mapper = mapper;
     }
 
@@ -78,5 +84,41 @@ public class AccountService : IAccountService
     public async Task DeleteAccountAsync(Guid id, Guid companyId, Guid deletedBy)
     {
         await _accountRepository.SoftDeleteAsync(id, companyId, deletedBy);
+    }
+
+    public async Task<RecalculateBalanceDto> RecalculateBalanceAsync(Guid id, Guid companyId, bool autoCorrect = false)
+    {
+        var account = await _accountRepository.GetByIdAsync(id, companyId)
+            ?? throw new NotFoundException(AppMessages.Account.NotFound);
+
+        // Obtener todos los movimientos activos de esta cuenta
+        var movements = await _movementRepository.GetByAccountAsync(id, companyId);
+
+        // Calcular saldo desde movimientos: Ingresos suman, Egresos restan
+        var calculatedBalance = movements
+            .Where(m => m.Active)
+            .Sum(m => m.Type == MovementType.Ingreso ? m.Amount : -m.Amount);
+
+        var discrepancy = account.CurrentBalance - calculatedBalance;
+        var wasCorrected = false;
+
+        // Si hay discrepancia y se solicita corrección automática
+        if (autoCorrect && discrepancy != 0)
+        {
+            // Ajustar saldo usando actualización atómica
+            var delta = calculatedBalance - account.CurrentBalance;
+            await _accountRepository.UpdateBalanceAtomicAsync(id, companyId, delta);
+            wasCorrected = true;
+        }
+
+        return new RecalculateBalanceDto
+        {
+            AccountId = account.Id,
+            AccountName = account.Name,
+            CurrentBalance = account.CurrentBalance,
+            CalculatedBalance = calculatedBalance,
+            Discrepancy = discrepancy,
+            WasCorrected = wasCorrected
+        };
     }
 }
