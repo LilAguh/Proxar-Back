@@ -199,7 +199,10 @@ public class AuthService : IAuthService
 
     public async Task DeactivateUserAsync(Guid userId, Guid companyId, Guid deletedBy)
     {
+        // SEGURIDAD: Desactivar usuario Y revocar todos sus refresh tokens
+        // Sin esto, el usuario desactivado puede seguir usando tokens existentes
         await _userRepository.SoftDeleteAsync(userId, companyId, deletedBy);
+        await _refreshTokenRepository.RevokeAllForUserAsync(userId, companyId);
     }
 
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, Guid companyId)
