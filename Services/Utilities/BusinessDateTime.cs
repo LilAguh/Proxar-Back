@@ -31,6 +31,55 @@ public static class BusinessDateTime
         );
     }
 
+    /// <summary>
+    /// Calcula próxima fecha de billing sumando período en timezone local.
+    /// Evita errores de 1 día al sumar meses en UTC.
+    /// </summary>
+    /// <param name="currentPeriodEnd">Fecha de fin del período actual (UTC)</param>
+    /// <param name="monthsToAdd">Meses a sumar (típicamente 1 para mensual)</param>
+    /// <param name="timeZoneId">Timezone de la empresa</param>
+    /// <returns>Próxima fecha de billing en UTC</returns>
+    public static DateTime CalculateNextBillingDate(DateTime currentPeriodEnd, int monthsToAdd, string? timeZoneId)
+    {
+        var localEnd = GetBusinessDate(currentPeriodEnd, timeZoneId);
+        var nextLocal = localEnd.AddMonths(monthsToAdd);
+        return ConvertBusinessDateToUtc(nextLocal, timeZoneId);
+    }
+
+    /// <summary>
+    /// Verifica si trial expiró en timezone de la empresa.
+    /// Compara fechas de negocio, no UTC directo.
+    /// </summary>
+    /// <param name="trialEndsAt">Fecha de expiración del trial (UTC)</param>
+    /// <param name="timeZoneId">Timezone de la empresa</param>
+    /// <returns>True si el trial ya expiró en la zona horaria local</returns>
+    public static bool IsTrialExpired(DateTime? trialEndsAt, string? timeZoneId)
+    {
+        if (!trialEndsAt.HasValue) return false;
+
+        var now = DateTime.UtcNow;
+        var localNow = GetBusinessDate(now, timeZoneId);
+        var localExpiry = GetBusinessDate(trialEndsAt.Value, timeZoneId);
+
+        return localNow > localExpiry;
+    }
+
+    /// <summary>
+    /// Verifica si período de suscripción está activo en timezone de la empresa.
+    /// Compara fechas de negocio, no UTC directo.
+    /// </summary>
+    /// <param name="periodEnd">Fecha de fin del período (UTC)</param>
+    /// <param name="timeZoneId">Timezone de la empresa</param>
+    /// <returns>True si el período todavía está activo en la zona horaria local</returns>
+    public static bool IsPeriodActive(DateTime periodEnd, string? timeZoneId)
+    {
+        var now = DateTime.UtcNow;
+        var localNow = GetBusinessDate(now, timeZoneId);
+        var localEnd = GetBusinessDate(periodEnd, timeZoneId);
+
+        return localNow <= localEnd;
+    }
+
     private static TimeZoneInfo ResolveTimeZone(string? timeZoneId)
     {
         var resolvedId = string.IsNullOrWhiteSpace(timeZoneId) ? DefaultTimeZoneId : timeZoneId;
