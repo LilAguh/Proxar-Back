@@ -6,6 +6,7 @@ using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -27,6 +28,8 @@ public class TicketService : ITicketService
     private readonly IUserRepository _userRepository;
     private readonly ITicketHistoryRepository _historyRepository;
     private readonly IBoxMovementRepository _boxMovementRepository;
+    private readonly ICashRegisterRepository _cashRegisterRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -35,6 +38,8 @@ public class TicketService : ITicketService
         IUserRepository userRepository,
         ITicketHistoryRepository historyRepository,
         IBoxMovementRepository boxMovementRepository,
+        ICashRegisterRepository cashRegisterRepository,
+        ICompanyRepository companyRepository,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
@@ -42,6 +47,8 @@ public class TicketService : ITicketService
         _userRepository = userRepository;
         _historyRepository = historyRepository;
         _boxMovementRepository = boxMovementRepository;
+        _cashRegisterRepository = cashRegisterRepository;
+        _companyRepository = companyRepository;
         _mapper = mapper;
     }
 
@@ -165,6 +172,20 @@ public class TicketService : ITicketService
             ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
         ValidateStatusTransition(ticket.Status, request.NewStatus);
+
+        // VALIDACIÓN CRÍTICA: verificar que la caja esté abierta para cambiar estados de tickets
+        // Esto garantiza que todo el flujo de trabajo del día esté dentro de una caja abierta
+        var company = await _companyRepository.GetByIdAsync(companyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
+        var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company.TimeZoneId);
+        var businessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company.TimeZoneId);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateUtc);
+
+        if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
+        {
+            throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
+        }
 
         var previousStatus = ticket.Status;
         ticket.Status = request.NewStatus;
