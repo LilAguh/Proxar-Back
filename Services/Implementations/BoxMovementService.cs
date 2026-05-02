@@ -120,6 +120,11 @@ public class BoxMovementService : IBoxMovementService
             throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
         }
 
+        // NORMALIZACIÓN: Garantizar que Amount siempre sea positivo
+        // Defensa en profundidad: aunque FluentValidation valida Amount > 0,
+        // normalizamos para proteger contra bypass (bugs, integraciones externas)
+        var normalizedAmount = Math.Abs(request.Amount);
+
         // TRANSACCIONALIDAD: Crear movimiento + actualizar saldo en una sola transacción
         // Si alguna operación falla, ambas se revierten para evitar inconsistencias
         await using var transaction = await _context.Database.BeginTransactionAsync();
@@ -132,7 +137,7 @@ public class BoxMovementService : IBoxMovementService
                 TicketId = request.TicketId,
                 UserId = userId,
                 Type = request.Type,
-                Amount = request.Amount,
+                Amount = normalizedAmount,  // Siempre positivo
                 Method = request.Method,
                 Concept = request.Concept,
                 VoucherNumber = request.VoucherNumber,
@@ -145,6 +150,7 @@ public class BoxMovementService : IBoxMovementService
             var createdMovement = await _movementRepository.AddAsync(movement);
 
             // CONCURRENCIA: Actualización atómica del saldo para evitar condiciones de carrera
+            // SIGNO: Se aplica según Type (Ingreso +, Egreso -). Amount ya está normalizado a positivo.
             var delta = movement.Type == Models.Enums.MovementType.Ingreso
                 ? movement.Amount
                 : -movement.Amount;
