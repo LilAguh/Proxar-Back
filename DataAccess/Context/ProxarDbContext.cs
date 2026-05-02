@@ -265,6 +265,8 @@ public class ProxarDbContext : DbContext
                   .WithMany(u => u.TicketHistories)
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
         });
     }
 }
