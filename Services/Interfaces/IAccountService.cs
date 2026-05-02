@@ -12,4 +12,5 @@ public interface IAccountService
     Task<AccountDto> CreateAccountAsync(CreateAccountRequest request, Guid companyId);
     Task<AccountDto> UpdateAccountAsync(Guid id, UpdateAccountRequest request, Guid companyId);
     Task DeleteAccountAsync(Guid id, Guid companyId, Guid deletedBy);
+    Task<RecalculateBalanceDto> RecalculateBalanceAsync(Guid id, Guid companyId, bool autoCorrect = false);
 }
