@@ -132,7 +132,9 @@ public class TicketRepository : ITicketRepository
     public async Task UpdateAsync(Ticket ticket)
     {
         ticket.LastUpdatedAt = DateTime.UtcNow;
-        _context.Tickets.Update(ticket);
+
+        // Evita propagar modificaciones sobre entidades de navegación incluidas (Client/User).
+        _context.Entry(ticket).State = EntityState.Modified;
         await _context.SaveChangesAsync();
     }
 
