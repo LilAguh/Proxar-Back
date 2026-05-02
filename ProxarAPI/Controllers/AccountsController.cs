@@ -92,4 +92,19 @@ public class AccountsController : BaseApiController
         await _accountService.DeleteAccountAsync(id, companyId, userId);
         return NoContent();
     }
+
+    /// <summary>
+    /// Recalculate account balance from movements
+    /// </summary>
+    /// <param name="id">Account ID</param>
+    /// <param name="autoCorrect">If true, corrects the balance automatically if discrepancy is found</param>
+    [HttpPost("{id}/recalculate")]
+    [ProducesResponseType(typeof(RecalculateBalanceDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RecalculateBalanceDto>> Recalculate(Guid id, [FromQuery] bool autoCorrect = false)
+    {
+        var companyId = GetCurrentCompanyId();
+        var result = await _accountService.RecalculateBalanceAsync(id, companyId, autoCorrect);
+        return Ok(result);
+    }
 }
