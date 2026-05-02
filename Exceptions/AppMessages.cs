@@ -39,6 +39,7 @@ public static class AppMessages
     public static class Account
     {
         public const string NotFound = "Cuenta no encontrada";
+        public const string Inactive = "La cuenta está desactivada y no puede recibir movimientos";
     }
 
     public static class Company

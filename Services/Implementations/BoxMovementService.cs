@@ -94,6 +94,9 @@ public class BoxMovementService : IBoxMovementService
         var account = await _accountRepository.GetByIdAsync(request.AccountId, companyId)
             ?? throw new NotFoundException(AppMessages.Account.NotFound);
 
+        if (!account.Active)
+            throw new BusinessRuleException(AppMessages.Account.Inactive);
+
         if (request.TicketId.HasValue)
         {
             var ticket = await _ticketRepository.GetByIdAsync(request.TicketId.Value, companyId)
