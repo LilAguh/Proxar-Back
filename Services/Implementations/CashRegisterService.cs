@@ -186,37 +186,39 @@ public class CashRegisterService : ICashRegisterService
             OpeningAmount = e.OpeningAmount,
             ClosingAmount = e.ClosingAmount
         }).ToList(),
-        Movements = movements.Select(m => new BoxMovementDto
-        {
-            Id = m.Id,
-            Number = m.Number,
-            Account = new AccountDto
+        Movements = movements
+            .Where(m => m.Account != null && m.User != null)
+            .Select(m => new BoxMovementDto
             {
-                Id = m.Account!.Id,
-                Name = m.Account.Name,
-                Type = m.Account.Type,
-                CurrentBalance = m.Account.CurrentBalance,
-                Active = m.Account.Active,
-                CreatedAt = m.Account.CreatedAt
-            },
-            TicketNumber = m.Ticket?.Number,
-            User = new UserDto
-            {
-                Id = m.User!.Id,
-                CompanyId = m.User.CompanyId,
-                Name = m.User.Name,
-                Email = m.User.Email,
-                Role = m.User.Role,
-                Active = m.User.Active
-            },
-            Type = m.Type,
-            Amount = m.Amount,
-            Method = m.Method,
-            Concept = m.Concept,
-            VoucherNumber = m.VoucherNumber,
-            Observations = m.Observations,
-            MovementDate = m.MovementDate,
-            RegisteredAt = m.RegisteredAt
-        }).ToList()
+                Id = m.Id,
+                Number = m.Number,
+                Account = new AccountDto
+                {
+                    Id = m.Account.Id,
+                    Name = m.Account.Name,
+                    Type = m.Account.Type,
+                    CurrentBalance = m.Account.CurrentBalance,
+                    Active = m.Account.Active,
+                    CreatedAt = m.Account.CreatedAt
+                },
+                TicketNumber = m.Ticket?.Number,
+                User = new UserDto
+                {
+                    Id = m.User.Id,
+                    CompanyId = m.User.CompanyId,
+                    Name = m.User.Name,
+                    Email = m.User.Email,
+                    Role = m.User.Role,
+                    Active = m.User.Active
+                },
+                Type = m.Type,
+                Amount = m.Amount,
+                Method = m.Method,
+                Concept = m.Concept,
+                VoucherNumber = m.VoucherNumber,
+                Observations = m.Observations,
+                MovementDate = m.MovementDate,
+                RegisteredAt = m.RegisteredAt
+            }).ToList()
     };
 }
