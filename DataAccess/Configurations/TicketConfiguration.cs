@@ -48,6 +48,8 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.HasIndex(t => t.Status);
         builder.HasIndex(t => t.ClientId);
         builder.HasIndex(t => t.AssignedToId);
+        builder.HasIndex(t => new { t.CompanyId, t.Status, t.Active });
+        builder.HasIndex(t => new { t.CompanyId, t.CreatedAt });
 
         // Relationships
         builder.HasOne(t => t.Client)

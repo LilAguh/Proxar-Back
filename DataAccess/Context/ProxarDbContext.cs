@@ -68,6 +68,8 @@ public class ProxarDbContext : DbContext
         modelBuilder.Entity<Client>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.CompanyId, e.Active });
+            entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Phone).IsRequired().HasMaxLength(20);
             entity.Property(e => e.Email).HasMaxLength(100);
@@ -91,6 +93,8 @@ public class ProxarDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Number).ValueGeneratedOnAdd();
             entity.HasIndex(e => new { e.CompanyId, e.Number }).IsUnique();
+            entity.HasIndex(e => new { e.CompanyId, e.Status, e.Active });
+            entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
             
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(2000);
@@ -146,6 +150,9 @@ public class ProxarDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Number).ValueGeneratedOnAdd();
             entity.HasIndex(e => new { e.CompanyId, e.Number }).IsUnique();
+            entity.HasIndex(e => new { e.CompanyId, e.Type, e.Active });
+            entity.HasIndex(e => new { e.CompanyId, e.MovementDate });
+            entity.HasIndex(e => new { e.CompanyId, e.RegisteredAt });
             
             entity.Property(e => e.Amount).HasPrecision(18, 2);
             entity.Property(e => e.Concept).IsRequired().HasMaxLength(300);

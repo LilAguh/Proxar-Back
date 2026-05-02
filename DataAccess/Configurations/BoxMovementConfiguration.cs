@@ -67,5 +67,8 @@ public class BoxMovementConfiguration : IEntityTypeConfiguration<BoxMovement>
         builder.HasIndex(m => m.AccountId);
         builder.HasIndex(m => m.TicketId);
         builder.HasIndex(m => m.MovementDate);
+        builder.HasIndex(m => new { m.CompanyId, m.Type, m.Active });
+        builder.HasIndex(m => new { m.CompanyId, m.MovementDate });
+        builder.HasIndex(m => new { m.CompanyId, m.RegisteredAt });
     }
 }

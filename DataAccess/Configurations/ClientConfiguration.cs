@@ -30,6 +30,10 @@ public class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.Property(c => c.ModifiedAt)
             .IsRequired();
 
+        // Indexes
+        builder.HasIndex(c => new { c.CompanyId, c.Active });
+        builder.HasIndex(c => new { c.CompanyId, c.CreatedAt });
+
         // Relationships
         builder.HasMany(c => c.Tickets)
             .WithOne(t => t.Client)
