@@ -1,5 +1,6 @@
 using AutoMapper;
 using DataAccess.Repositories.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
 using Models.Enums;
 using Services.DTOs.Responses;
 using Services.Interfaces;
@@ -13,24 +14,31 @@ public class DashboardService : IDashboardService
     private readonly IBoxMovementRepository _movementRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ICompanyRepository _companyRepository;
-    private readonly IMapper _mapper;
+    private readonly IMemoryCache _cache;
 
     public DashboardService(
         ITicketRepository ticketRepository,
         IBoxMovementRepository movementRepository,
         IAccountRepository accountRepository,
         ICompanyRepository companyRepository,
-        IMapper mapper)
+        IMapper mapper,
+        IMemoryCache cache)
     {
         _ticketRepository = ticketRepository;
         _movementRepository = movementRepository;
         _accountRepository = accountRepository;
         _companyRepository = companyRepository;
-        _mapper = mapper;
+        _cache = cache;
     }
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(Guid companyId)
     {
+        var cacheKey = $"dashboard:summary:{companyId}";
+        if (_cache.TryGetValue(cacheKey, out DashboardSummaryDto? cachedSummary) && cachedSummary is not null)
+        {
+            return cachedSummary;
+        }
+
         var tickets = await _ticketRepository.GetAllByCompanyAsync(companyId);
         var accounts = await _accountRepository.GetActiveByCompanyAsync(companyId);
 
@@ -64,6 +72,12 @@ public class DashboardService : IDashboardService
             TotalBalance = accounts.Sum(a => a.CurrentBalance),
             AccountBalances = accounts.ToDictionary(a => a.Id, a => a.CurrentBalance)
         };
+
+        _cache.Set(cacheKey, summary, new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(30),
+            SlidingExpiration = TimeSpan.FromSeconds(15)
+        });
 
         return summary;
     }

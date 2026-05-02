@@ -35,6 +35,7 @@ try
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     // Repositorios y servicios
+    builder.Services.AddMemoryCache();
     builder.Services.AddRepositories();
     builder.Services.AddServices();
     builder.Services.AddAutoMapperProfiles();
