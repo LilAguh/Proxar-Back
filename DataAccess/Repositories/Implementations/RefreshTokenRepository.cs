@@ -67,7 +67,8 @@ public class RefreshTokenRepository : IRefreshTokenRepository
     public async Task RevokeAllForUserAsync(Guid userId, Guid companyId)
     {
         var tokens = await _context.RefreshTokens
-            .Where(t => t.UserId == userId && t.CompanyId == companyId && t.RevokedAt == null)
+            .Include(t => t.User)
+            .Where(t => t.UserId == userId && t.User.CompanyId == companyId && t.RevokedAt == null)
             .ToListAsync();
 
         var now = DateTime.UtcNow;

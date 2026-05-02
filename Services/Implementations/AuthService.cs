@@ -266,7 +266,6 @@ public class AuthService : IAuthService
         var entity = new RefreshToken
         {
             UserId = user.Id,
-            CompanyId = user.CompanyId,
             TokenHash = HashToken(plainToken),
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             CreatedAt = DateTime.UtcNow
