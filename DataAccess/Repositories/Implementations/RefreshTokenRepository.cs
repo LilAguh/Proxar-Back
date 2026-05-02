@@ -23,6 +23,19 @@ public class RefreshTokenRepository : IRefreshTokenRepository
 
     public async Task<RefreshToken?> RevokeIfActiveAsync(string tokenHash)
     {
+        // SEGURIDAD: Revocación atómica de refresh token para prevenir reuso.
+        //
+        // Bajo concurrencia (dos requests simultáneos con mismo token):
+        // - Request A ejecuta ExecuteUpdateAsync → affectedRows = 1 → retorna entidad
+        // - Request B ejecuta ExecuteUpdateAsync → affectedRows = 0 (ya revocado) → retorna null
+        //
+        // Esto es seguro con el nivel de aislamiento por defecto de PostgreSQL (ReadCommitted):
+        // - ExecuteUpdateAsync genera SQL directo (UPDATE ... WHERE RevokedAt IS NULL)
+        // - PostgreSQL aplica row-level locking en la fila actualizada
+        // - La escritura de A es visible inmediatamente para B
+        // - Solo UN request puede actualizar la fila (affectedRows = 1)
+        //
+        // Con niveles más altos (RepeatableRead, Serializable) también funciona correctamente.
         var now = DateTime.UtcNow;
 
         var affectedRows = await _context.RefreshTokens
