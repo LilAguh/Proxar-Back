@@ -123,6 +123,33 @@ public static class ProductionSeeder
         context.Accounts.AddRange(cuentaEfectivo, cuentaBanco, cuentaMercadoPago);
         Console.WriteLine("✅ 3 cuentas creadas");
 
+        // ============================================
+        // SUSCRIPCIÓN
+        // ============================================
+        var now = DateTime.UtcNow;
+        var trialEnd = now.AddDays(30);
+
+        var subscription = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company.Id,
+            Plan = SubscriptionPlan.Basic,
+            Status = SubscriptionStatus.Active,
+            MonthlyFee = 29999m,
+            IsOnTrial = true,
+            TrialStart = now,
+            TrialEnd = trialEnd,
+            CurrentPeriodStart = now,
+            CurrentPeriodEnd = trialEnd,
+            NextBillingDate = trialEnd.AddDays(1),
+            FailedPaymentAttempts = 0,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        context.Subscriptions.Add(subscription);
+        Console.WriteLine("✅ Suscripción creada (trial 30 días)");
+
         context.SaveChanges();
 
         Console.WriteLine("🎉 Production seeding completado!");
