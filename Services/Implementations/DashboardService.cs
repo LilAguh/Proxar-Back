@@ -33,6 +33,12 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardSummaryDto> GetSummaryAsync(Guid companyId)
     {
+        // NOTA: Cache simple sin invalidación automática.
+        // Los datos pueden estar desactualizados hasta 30s después de:
+        // - Crear/actualizar/eliminar tickets
+        // - Registrar/eliminar movimientos de caja
+        // - Modificar balances de cuentas
+        // MVP: aceptable. Post-MVP: implementar invalidación o usar eventos.
         var cacheKey = $"dashboard:summary:{companyId}";
         if (_cache.TryGetValue(cacheKey, out DashboardSummaryDto? cachedSummary) && cachedSummary is not null)
         {
