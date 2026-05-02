@@ -26,162 +26,102 @@ public class ProxarDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         // ============================================
-        // COMPANY
+        // APPLY CONFIGURATIONS (enums → string)
         // ============================================
         modelBuilder.ApplyConfiguration(new CompanyConfiguration());
+        modelBuilder.ApplyConfiguration(new SubscriptionConfiguration());
+        modelBuilder.ApplyConfiguration(new SubscriptionPaymentConfiguration());
+        modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new ClientConfiguration());
+        modelBuilder.ApplyConfiguration(new TicketConfiguration());
+        modelBuilder.ApplyConfiguration(new AccountConfiguration());
+        modelBuilder.ApplyConfiguration(new BoxMovementConfiguration());
+        modelBuilder.ApplyConfiguration(new TicketHistoryConfiguration());
+
+        // ============================================
+        // SOFT DELETE QUERY FILTERS
+        // ============================================
         modelBuilder.Entity<Company>()
             .HasQueryFilter(e => e.Active && e.DeletedAt == null);
 
-        // ============================================
-        // SUBSCRIPTION
-        // ============================================
-        modelBuilder.ApplyConfiguration(new SubscriptionConfiguration());
+        modelBuilder.Entity<User>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<Client>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<Ticket>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<Account>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<BoxMovement>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<TicketHistory>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
 
         // ============================================
-        // SUBSCRIPTION PAYMENT
+        // ADDITIONAL CONFIGURATIONS
         // ============================================
-        modelBuilder.ApplyConfiguration(new SubscriptionPaymentConfiguration());
 
-        // ============================================
-        // USER
-        // ============================================
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.CompanyId, e.Email }).IsUnique();
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.PasswordHash).IsRequired();
-            
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Users)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        // User: índice único por empresa y email
+        modelBuilder.Entity<User>()
+            .HasIndex(e => new { e.CompanyId, e.Email })
+            .IsUnique();
 
-        // ============================================
-        // CLIENT
-        // ============================================
-        modelBuilder.Entity<Client>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.CompanyId, e.Active });
-            entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Phone).IsRequired().HasMaxLength(20);
-            entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.Address).HasMaxLength(300);
-            entity.Property(e => e.Notes).HasMaxLength(1000);
+        // User: relación con Company
+        modelBuilder.Entity<User>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Users)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Clients)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        // Client: índices adicionales por empresa
+        modelBuilder.Entity<Client>()
+            .HasIndex(e => new { e.CompanyId, e.Active });
 
-        // ============================================
-        // TICKET
-        // ============================================
-        modelBuilder.Entity<Ticket>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Number).ValueGeneratedOnAdd();
-            entity.HasIndex(e => new { e.CompanyId, e.Number }).IsUnique();
-            entity.HasIndex(e => new { e.CompanyId, e.Status, e.Active });
-            entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
-            
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Description).HasMaxLength(2000);
-            entity.Property(e => e.Address).HasMaxLength(300);
+        modelBuilder.Entity<Client>()
+            .HasIndex(e => new { e.CompanyId, e.CreatedAt });
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Tickets)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
+        // Client: relación con Company
+        modelBuilder.Entity<Client>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Clients)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(e => e.Client)
-                  .WithMany(c => c.Tickets)
-                  .HasForeignKey(e => e.ClientId)
-                  .OnDelete(DeleteBehavior.Restrict);
+        // Ticket: índice único por empresa y número
+        modelBuilder.Entity<Ticket>()
+            .HasIndex(e => new { e.CompanyId, e.Number })
+            .IsUnique();
 
-            entity.HasOne(e => e.CreatedBy)
-                  .WithMany(u => u.CreatedTickets)
-                  .HasForeignKey(e => e.CreatedById)
-                  .OnDelete(DeleteBehavior.Restrict);
+        // Ticket: relación con Company
+        modelBuilder.Entity<Ticket>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Tickets)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(e => e.AssignedTo)
-                  .WithMany(u => u.AssignedTickets)
-                  .HasForeignKey(e => e.AssignedToId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        // Account: relación con Company
+        modelBuilder.Entity<Account>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Accounts)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-        // ============================================
-        // ACCOUNT
-        // ============================================
-        modelBuilder.Entity<Account>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.CurrentBalance).HasPrecision(18, 2);
+        // BoxMovement: índice único por empresa y número
+        modelBuilder.Entity<BoxMovement>()
+            .HasIndex(e => new { e.CompanyId, e.Number })
+            .IsUnique();
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Accounts)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
-
-        // ============================================
-        // BOX MOVEMENT
-        // ============================================
-        modelBuilder.Entity<BoxMovement>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Number).ValueGeneratedOnAdd();
-            entity.HasIndex(e => new { e.CompanyId, e.Number }).IsUnique();
-            entity.HasIndex(e => new { e.CompanyId, e.Type, e.Active });
-            entity.HasIndex(e => new { e.CompanyId, e.MovementDate });
-            entity.HasIndex(e => new { e.CompanyId, e.RegisteredAt });
-            
-            entity.Property(e => e.Amount).HasPrecision(18, 2);
-            entity.Property(e => e.Concept).IsRequired().HasMaxLength(300);
-            entity.Property(e => e.VoucherNumber).HasMaxLength(50);
-            entity.Property(e => e.Observations).HasMaxLength(1000);
-
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.BoxMovements)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Account)
-                  .WithMany(a => a.Movements)
-                  .HasForeignKey(e => e.AccountId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.Ticket)
-                  .WithMany(t => t.Movements)
-                  .HasForeignKey(e => e.TicketId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.User)
-                  .WithMany(u => u.BoxMovements)
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        // BoxMovement: relación con Company
+        modelBuilder.Entity<BoxMovement>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.BoxMovements)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ============================================
         // CASH REGISTER
@@ -244,29 +184,6 @@ public class ProxarDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // ============================================
-        // TICKET HISTORY
-        // ============================================
-        modelBuilder.Entity<TicketHistory>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Comment).HasMaxLength(1000);
-            entity.Property(e => e.PreviousStatus).HasMaxLength(50);
-            entity.Property(e => e.NewStatus).HasMaxLength(50);
-
-            entity.HasOne(e => e.Ticket)
-                  .WithMany(t => t.History)
-                  .HasForeignKey(e => e.TicketId)
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.User)
-                  .WithMany(u => u.TicketHistories)
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
         });
     }
 }
