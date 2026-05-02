@@ -130,11 +130,26 @@ public class CashRegisterService : ICashRegisterService
         if (register.Date.Date != todayBusinessDateUtc.Date)
             throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
 
+        var movements = (await GetMovementsForBusinessDateAsync(companyId, todayBusinessDate, company?.TimeZoneId)).ToList();
+
         foreach (var closeEntry in request.Entries)
         {
             var entry = register.Entries.FirstOrDefault(e => e.AccountId == closeEntry.AccountId);
-            if (entry != null)
-                entry.ClosingAmount = closeEntry.ClosingAmount;
+            if (entry == null) continue;
+
+            var accountMovements = movements.Where(m => m.AccountId == entry.AccountId);
+            var movementNet = accountMovements.Sum(m => m.Type == MovementType.Ingreso ? m.Amount : -m.Amount);
+            var expectedClosing = entry.OpeningAmount + movementNet;
+            var difference = Math.Abs(closeEntry.ClosingAmount - expectedClosing);
+
+            if (difference > 0.01m)
+            {
+                throw new BusinessRuleException(
+                    $"Cierre inválido para cuenta '{entry.Account?.Name ?? entry.AccountId.ToString()}'. " +
+                    $"Esperado: {expectedClosing:0.00}, informado: {closeEntry.ClosingAmount:0.00}");
+            }
+
+            entry.ClosingAmount = closeEntry.ClosingAmount;
         }
 
         register.Status = CashRegisterStatus.Closed;
@@ -144,7 +159,6 @@ public class CashRegisterService : ICashRegisterService
             register.Notes = request.Notes;
 
         await _cashRegisterRepository.UpdateAsync(register);
-        var movements = await GetMovementsForBusinessDateAsync(companyId, register.Date, company?.TimeZoneId);
         return MapToDto(register, movements);
     }
 
