@@ -1,5 +1,6 @@
 using DataAccess.Repositories.Implementations;
 using DataAccess.Repositories.Interfaces;
+using DataAccess.Services;
 using Services.Implementations;
 using Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,10 @@ public static class DependencyInjection
 
     public static IServiceCollection AddServices(this IServiceCollection services)
 {
+    // Encryption service (Singleton - used by DbContext)
+    services.AddSingleton<IEncryptionService, AesEncryptionService>();
+
+    // Application services
     services.AddScoped<ICompanyService, CompanyService>();
     services.AddScoped<IAuthService, AuthService>();
     services.AddScoped<IClientService, ClientService>();
