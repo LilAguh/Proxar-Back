@@ -6,6 +6,7 @@ using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -14,17 +15,20 @@ public class BoxMovementService : IBoxMovementService
     private readonly IBoxMovementRepository _movementRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ITicketRepository _ticketRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly IMapper _mapper;
 
     public BoxMovementService(
         IBoxMovementRepository movementRepository,
         IAccountRepository accountRepository,
         ITicketRepository ticketRepository,
+        ICompanyRepository companyRepository,
         IMapper mapper)
     {
         _movementRepository = movementRepository;
         _accountRepository = accountRepository;
         _ticketRepository = ticketRepository;
+        _companyRepository = companyRepository;
         _mapper = mapper;
     }
 
@@ -81,6 +85,9 @@ public class BoxMovementService : IBoxMovementService
 
     public async Task<BoxMovementDto> RegisterMovementAsync(RegisterMovementRequest request, Guid userId, Guid companyId)
     {
+        var company = await _companyRepository.GetByIdAsync(companyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
         var account = await _accountRepository.GetByIdAsync(request.AccountId, companyId)
             ?? throw new NotFoundException(AppMessages.Account.NotFound);
 
@@ -89,6 +96,9 @@ public class BoxMovementService : IBoxMovementService
             var ticket = await _ticketRepository.GetByIdAsync(request.TicketId.Value, companyId)
                 ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
         }
+
+        // Convertir fecha de negocio a UTC usando timezone de la empresa
+        var movementDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(request.MovementDate, company.TimeZoneId);
 
         var movement = new BoxMovement
         {
@@ -102,7 +112,7 @@ public class BoxMovementService : IBoxMovementService
             Concept = request.Concept,
             VoucherNumber = request.VoucherNumber,
             Observations = request.Observations,
-            MovementDate = DateTime.SpecifyKind(request.MovementDate, DateTimeKind.Utc),
+            MovementDate = movementDateUtc,
             Active = true,
             RegisteredAt = DateTime.UtcNow
         };
