@@ -1,12 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using Models;
 using DataAccess.Configurations;
+using DataAccess.Converters;
+using DataAccess.Services;
 
 namespace DataAccess.Context;
 
 public class ProxarDbContext : DbContext
 {
-    public ProxarDbContext(DbContextOptions<ProxarDbContext> options) : base(options) { }
+    private readonly IEncryptionService _encryptionService;
+
+    public ProxarDbContext(
+        DbContextOptions<ProxarDbContext> options,
+        IEncryptionService encryptionService) : base(options)
+    {
+        _encryptionService = encryptionService;
+    }
 
     public DbSet<Company> Companies { get; set; }
     public DbSet<User> Users { get; set; }
@@ -37,6 +46,29 @@ public class ProxarDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AccountConfiguration());
         modelBuilder.ApplyConfiguration(new BoxMovementConfiguration());
         modelBuilder.ApplyConfiguration(new TicketHistoryConfiguration());
+
+        // ============================================
+        // ENCRYPTION (Value Converters for sensitive fields)
+        // ============================================
+        var encryptedConverter = new EncryptedStringConverter(_encryptionService);
+
+        // Company: CertPassword (AFIP certificate password)
+        modelBuilder.Entity<Company>()
+            .Property(e => e.CertPassword)
+            .HasConversion(encryptedConverter);
+
+        // Subscription: Mercado Pago sensitive tokens
+        modelBuilder.Entity<Subscription>()
+            .Property(e => e.MercadoPagoCardToken)
+            .HasConversion(encryptedConverter);
+
+        modelBuilder.Entity<Subscription>()
+            .Property(e => e.MercadoPagoPreapprovalId)
+            .HasConversion(encryptedConverter);
+
+        modelBuilder.Entity<Subscription>()
+            .Property(e => e.MercadoPagoCustomerId)
+            .HasConversion(encryptedConverter);
 
         // ============================================
         // SOFT DELETE QUERY FILTERS
