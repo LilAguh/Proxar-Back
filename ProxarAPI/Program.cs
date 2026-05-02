@@ -1,7 +1,9 @@
 using DataAccess.Context;
+using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
@@ -81,6 +83,38 @@ try
             ValidIssuer = jwtSettings!.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+        };
+
+        // SEGURIDAD: Validar que el usuario siga activo en cada request
+        // Invalida access tokens de usuarios desactivados inmediatamente
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userIdClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                {
+                    context.Fail("Invalid user ID in token");
+                    return;
+                }
+
+                var companyIdClaim = context.Principal?.FindFirst("CompanyId")?.Value;
+                if (!Guid.TryParse(companyIdClaim, out var companyId))
+                {
+                    context.Fail("Invalid company ID in token");
+                    return;
+                }
+
+                var userRepository = context.HttpContext.RequestServices
+                    .GetRequiredService<IUserRepository>();
+                var user = await userRepository.GetByIdAsync(userId, companyId);
+
+                if (user == null || !user.Active)
+                {
+                    context.Fail("User account is disabled");
+                    return;
+                }
+            }
         };
     });
 
