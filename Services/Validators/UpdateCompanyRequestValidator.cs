@@ -27,12 +27,13 @@ public class UpdateCompanyRequestValidator : AbstractValidator<UpdateCompanyRequ
 
         // Datos fiscales
         RuleFor(x => x.CUIT)
-            .Matches(@"^\d{2}-?\d{8}-?\d$").When(x => !string.IsNullOrEmpty(x.CUIT))
-            .WithMessage("El CUIT debe tener formato XX-XXXXXXXX-X (11 dígitos)");
+            .Matches(@"^\d{2}-\d{8}-\d$").When(x => !string.IsNullOrEmpty(x.CUIT))
+            .WithMessage("El CUIT debe tener formato XX-XXXXXXXX-X");
 
         RuleFor(x => x.IVA)
-            .Must(BeValidIVACondition).When(x => !string.IsNullOrEmpty(x.IVA))
-            .WithMessage("Condición de IVA inválida. Valores válidos: ResponsableInscripto, Monotributista, Exento, NoResponsable, ConsumidorFinal");
+            .Must(iva => string.IsNullOrWhiteSpace(iva) || Enum.TryParse<IVACondition>(iva, out _))
+            .When(x => !string.IsNullOrWhiteSpace(x.IVA))
+            .WithMessage("Condición de IVA inválida");
 
         RuleFor(x => x.IIBB)
             .MaximumLength(20).When(x => !string.IsNullOrEmpty(x.IIBB))
@@ -101,9 +102,4 @@ public class UpdateCompanyRequestValidator : AbstractValidator<UpdateCompanyRequ
             .WithMessage("El formato de fecha no puede exceder 20 caracteres");
     }
 
-    private static bool BeValidIVACondition(string? iva)
-    {
-        if (string.IsNullOrWhiteSpace(iva)) return true;
-        return Enum.TryParse<IVACondition>(iva, out _);
-    }
 }

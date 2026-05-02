@@ -10,7 +10,7 @@ public class UpdateCompanyRequest
 
     // Datos fiscales
     public string? CUIT { get; set; }
-    public string? IVA { get; set; } // "ResponsableInscripto", "Monotributista", etc.
+    public string? IVA { get; set; }
     public string? IIBB { get; set; }
     public string? FiscalAddress { get; set; }
     public string? FiscalCity { get; set; }

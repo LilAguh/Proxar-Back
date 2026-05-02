@@ -78,8 +78,9 @@ public class CompanyService : ICompanyService
         {
             if (!Enum.TryParse<Models.Enums.IVACondition>(request.IVA, out var ivaCondition))
             {
-                throw new BusinessRuleException($"Condición de IVA inválida: '{request.IVA}'. Valores válidos: {string.Join(", ", Enum.GetNames<Models.Enums.IVACondition>())}");
+                throw new BusinessRuleException("Condición de IVA inválida");
             }
+
             company.IVA = ivaCondition;
         }
         else
