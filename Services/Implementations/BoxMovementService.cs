@@ -135,12 +135,11 @@ public class BoxMovementService : IBoxMovementService
 
         var createdMovement = await _movementRepository.AddAsync(movement);
 
-        if (movement.Type == Models.Enums.MovementType.Ingreso)
-            account.CurrentBalance += movement.Amount;
-        else
-            account.CurrentBalance -= movement.Amount;
-
-        await _accountRepository.UpdateAsync(account);
+        // CONCURRENCIA: Actualización atómica del saldo para evitar condiciones de carrera
+        var delta = movement.Type == Models.Enums.MovementType.Ingreso
+            ? movement.Amount
+            : -movement.Amount;
+        await _accountRepository.UpdateBalanceAtomicAsync(account.Id, companyId, delta);
 
         return _mapper.Map<BoxMovementDto>(createdMovement);
     }
@@ -150,16 +149,12 @@ public class BoxMovementService : IBoxMovementService
         var movement = await _movementRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Movement.NotFound);
 
-        var account = await _accountRepository.GetByIdAsync(movement.AccountId, companyId);
-        if (account != null)
-        {
-            if (movement.Type == Models.Enums.MovementType.Ingreso)
-                account.CurrentBalance -= movement.Amount;
-            else
-                account.CurrentBalance += movement.Amount;
-
-            await _accountRepository.UpdateAsync(account);
-        }
+        // CONCURRENCIA: Revertir saldo de forma atómica
+        // Ingreso se resta, Egreso se suma (operación inversa al registro)
+        var delta = movement.Type == Models.Enums.MovementType.Ingreso
+            ? -movement.Amount
+            : movement.Amount;
+        await _accountRepository.UpdateBalanceAtomicAsync(movement.AccountId, companyId, delta);
 
         await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
     }
