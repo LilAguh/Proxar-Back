@@ -4,6 +4,7 @@ using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -13,6 +14,7 @@ public class ReportService : IReportService
     private readonly IBoxMovementRepository _movementRepository;
     private readonly IClientRepository _clientRepository;
     private readonly IAccountRepository _accountRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly IMapper _mapper;
 
     public ReportService(
@@ -20,12 +22,14 @@ public class ReportService : IReportService
         IBoxMovementRepository movementRepository,
         IClientRepository clientRepository,
         IAccountRepository accountRepository,
+        ICompanyRepository companyRepository,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
         _movementRepository = movementRepository;
         _clientRepository = clientRepository;
         _accountRepository = accountRepository;
+        _companyRepository = companyRepository;
         _mapper = mapper;
     }
 
@@ -146,9 +150,14 @@ public class ReportService : IReportService
 
     public async Task<MetricsDto> GetMetricsAsync(Guid companyId)
     {
-        var now = DateTime.UtcNow;
-        var currentMonthStart = new DateTime(now.Year, now.Month, 1);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var currentMonthStart = new DateTime(businessDate.Year, businessDate.Month, 1);
         var previousMonthStart = currentMonthStart.AddMonths(-1);
+
+        // Convertir fechas de negocio a UTC para queries
+        var currentMonthStartUtc = BusinessDateTime.ConvertBusinessDateToUtc(currentMonthStart, company?.TimeZoneId);
+        var previousMonthStartUtc = BusinessDateTime.ConvertBusinessDateToUtc(previousMonthStart, company?.TimeZoneId);
 
         // Tickets totales
         var allTickets = await _ticketRepository.GetAllByCompanyAsync(companyId);
@@ -160,7 +169,7 @@ public class ReportService : IReportService
         // Finanzas mes actual
         var currentMonthMovements = await _movementRepository.GetFilteredAsync(
             companyId,
-            currentMonthStart,
+            currentMonthStartUtc,
             null,
             null, null, null, null
         );
@@ -176,8 +185,8 @@ public class ReportService : IReportService
         // Finanzas mes anterior
         var previousMonthMovements = await _movementRepository.GetFilteredAsync(
             companyId,
-            previousMonthStart,
-            currentMonthStart,
+            previousMonthStartUtc,
+            currentMonthStartUtc,
             null, null, null, null
         );
 
