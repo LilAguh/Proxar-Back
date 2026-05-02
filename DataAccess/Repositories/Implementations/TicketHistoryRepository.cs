@@ -29,16 +29,4 @@ public class TicketHistoryRepository : ITicketHistoryRepository
         await _context.SaveChangesAsync();
         return history;
     }
-
-    public async Task SoftDeleteByTicketAsync(Guid ticketId, Guid companyId, Guid deletedBy)
-    {
-        var now = DateTime.UtcNow;
-
-        await _context.TicketHistory
-            .Where(h => h.TicketId == ticketId && h.CompanyId == companyId && h.Active)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(h => h.Active, false)
-                .SetProperty(h => h.DeletedAt, now)
-                .SetProperty(h => h.DeletedBy, deletedBy));
-    }
 }

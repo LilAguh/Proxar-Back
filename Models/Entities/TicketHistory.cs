@@ -22,13 +22,6 @@ public class TicketHistory
     public string? Comment { get; set; }
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
 
-
-    // Soft delete
-    public bool Active { get; set; } = true;
-    public DateTime? DeletedAt { get; set; }
-    public Guid? DeletedBy { get; set; }
-
-
     // Navigation properties
     public Ticket Ticket { get; set; } = null!;
     public User User { get; set; } = null!;

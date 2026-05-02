@@ -232,8 +232,6 @@ public class TicketService : ITicketService
             // CONSISTENCIA: Propagar soft delete a registros relacionados de forma atómica
             await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
             await _boxMovementRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
-            await _historyRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
-
             await transaction.CommitAsync();
         }
         catch

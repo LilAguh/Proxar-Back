@@ -91,9 +91,6 @@ public class ProxarDbContext : DbContext
         modelBuilder.Entity<BoxMovement>()
             .HasQueryFilter(e => e.Active && e.DeletedAt == null);
 
-        modelBuilder.Entity<TicketHistory>()
-            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
-
         // ============================================
         // ADDITIONAL CONFIGURATIONS
         // ============================================
