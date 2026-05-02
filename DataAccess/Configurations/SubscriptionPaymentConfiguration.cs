@@ -56,9 +56,6 @@ public class SubscriptionPaymentConfiguration : IEntityTypeConfiguration<Subscri
             .HasMaxLength(500);
 
         // Metadata
-        builder.Property(sp => sp.AttemptedAt)
-            .IsRequired();
-
         builder.Property(sp => sp.CreatedAt)
             .IsRequired();
 

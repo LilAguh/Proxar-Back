@@ -208,7 +208,6 @@ public static class DevSeeder
             PeriodEnd = DateTime.UtcNow.AddMonths(-1).AddDays(-15),
             MercadoPagoPaymentId = "fake-payment-id-789",
             MercadoPagoStatus = "approved",
-            AttemptedAt = DateTime.UtcNow.AddMonths(-1),
             CompletedAt = DateTime.UtcNow.AddMonths(-1),
             CreatedAt = DateTime.UtcNow.AddMonths(-1)
         };
@@ -672,7 +671,6 @@ public static class DevSeeder
                     PeriodEnd = periodEnd,
                     MercadoPagoPaymentId = $"seed-payment-{company.Slug}",
                     MercadoPagoStatus = "approved",
-                    AttemptedAt = periodStart,
                     CompletedAt = periodStart,
                     CreatedAt = periodStart
                 });

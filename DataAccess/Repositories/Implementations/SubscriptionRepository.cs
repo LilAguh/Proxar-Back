@@ -26,7 +26,7 @@ public class SubscriptionRepository : ISubscriptionRepository
     {
         return await _context.Subscriptions
             .Include(s => s.Company)
-            .Include(s => s.Payments.OrderByDescending(p => p.AttemptedAt))
+            .Include(s => s.Payments.OrderByDescending(p => p.CreatedAt))
             .FirstOrDefaultAsync(s => s.CompanyId == companyId);
     }
 

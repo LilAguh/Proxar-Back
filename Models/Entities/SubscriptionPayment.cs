@@ -27,7 +27,6 @@ public class SubscriptionPayment
     public string? FailureReason { get; set; } // Razón legible del fallo
 
     // Metadata
-    public DateTime AttemptedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 
