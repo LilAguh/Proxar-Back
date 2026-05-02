@@ -55,7 +55,7 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.HasOne(t => t.Client)
             .WithMany(c => c.Tickets)
             .HasForeignKey(t => t.ClientId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.CreatedBy)
             .WithMany(u => u.CreatedTickets)
