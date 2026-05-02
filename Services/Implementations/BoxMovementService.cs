@@ -1,4 +1,5 @@
 using AutoMapper;
+using DataAccess.Context;
 using DataAccess.Repositories.Interfaces;
 using Exceptions;
 using Models;
@@ -17,6 +18,7 @@ public class BoxMovementService : IBoxMovementService
     private readonly ITicketRepository _ticketRepository;
     private readonly ICompanyRepository _companyRepository;
     private readonly ICashRegisterRepository _cashRegisterRepository;
+    private readonly ProxarDbContext _context;
     private readonly IMapper _mapper;
 
     public BoxMovementService(
@@ -25,6 +27,7 @@ public class BoxMovementService : IBoxMovementService
         ITicketRepository ticketRepository,
         ICompanyRepository companyRepository,
         ICashRegisterRepository cashRegisterRepository,
+        ProxarDbContext context,
         IMapper mapper)
     {
         _movementRepository = movementRepository;
@@ -32,6 +35,7 @@ public class BoxMovementService : IBoxMovementService
         _ticketRepository = ticketRepository;
         _companyRepository = companyRepository;
         _cashRegisterRepository = cashRegisterRepository;
+        _context = context;
         _mapper = mapper;
     }
 
@@ -116,32 +120,45 @@ public class BoxMovementService : IBoxMovementService
             throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
         }
 
-        var movement = new BoxMovement
+        // TRANSACCIONALIDAD: Crear movimiento + actualizar saldo en una sola transacción
+        // Si alguna operación falla, ambas se revierten para evitar inconsistencias
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            CompanyId = companyId,
-            AccountId = request.AccountId,
-            TicketId = request.TicketId,
-            UserId = userId,
-            Type = request.Type,
-            Amount = request.Amount,
-            Method = request.Method,
-            Concept = request.Concept,
-            VoucherNumber = request.VoucherNumber,
-            Observations = request.Observations,
-            MovementDate = movementDateUtc,
-            Active = true,
-            RegisteredAt = DateTime.UtcNow
-        };
+            var movement = new BoxMovement
+            {
+                CompanyId = companyId,
+                AccountId = request.AccountId,
+                TicketId = request.TicketId,
+                UserId = userId,
+                Type = request.Type,
+                Amount = request.Amount,
+                Method = request.Method,
+                Concept = request.Concept,
+                VoucherNumber = request.VoucherNumber,
+                Observations = request.Observations,
+                MovementDate = movementDateUtc,
+                Active = true,
+                RegisteredAt = DateTime.UtcNow
+            };
 
-        var createdMovement = await _movementRepository.AddAsync(movement);
+            var createdMovement = await _movementRepository.AddAsync(movement);
 
-        // CONCURRENCIA: Actualización atómica del saldo para evitar condiciones de carrera
-        var delta = movement.Type == Models.Enums.MovementType.Ingreso
-            ? movement.Amount
-            : -movement.Amount;
-        await _accountRepository.UpdateBalanceAtomicAsync(account.Id, companyId, delta);
+            // CONCURRENCIA: Actualización atómica del saldo para evitar condiciones de carrera
+            var delta = movement.Type == Models.Enums.MovementType.Ingreso
+                ? movement.Amount
+                : -movement.Amount;
+            await _accountRepository.UpdateBalanceAtomicAsync(account.Id, companyId, delta);
 
-        return _mapper.Map<BoxMovementDto>(createdMovement);
+            await transaction.CommitAsync();
+
+            return _mapper.Map<BoxMovementDto>(createdMovement);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task SoftDeleteMovementAsync(Guid id, Guid companyId, Guid deletedBy)
@@ -152,14 +169,27 @@ public class BoxMovementService : IBoxMovementService
         var movement = await _movementRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Movement.NotFound);
 
-        // CONCURRENCIA: Revertir saldo de forma atómica ANTES del soft delete
-        // Ingreso se resta, Egreso se suma (operación inversa al registro)
-        var delta = movement.Type == Models.Enums.MovementType.Ingreso
-            ? -movement.Amount
-            : movement.Amount;
-        await _accountRepository.UpdateBalanceAtomicAsync(movement.AccountId, companyId, delta);
+        // TRANSACCIONALIDAD: Revertir saldo + soft delete en una sola transacción
+        // Si alguna operación falla, ambas se revierten para evitar inconsistencias
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // CONCURRENCIA: Revertir saldo de forma atómica ANTES del soft delete
+            // Ingreso se resta, Egreso se suma (operación inversa al registro)
+            var delta = movement.Type == Models.Enums.MovementType.Ingreso
+                ? -movement.Amount
+                : movement.Amount;
+            await _accountRepository.UpdateBalanceAtomicAsync(movement.AccountId, companyId, delta);
 
-        // Soft delete usa ExecuteUpdateAsync (no carga ni guarda grafo)
-        await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
+            // Soft delete usa ExecuteUpdateAsync (no carga ni guarda grafo)
+            await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
