@@ -1,5 +1,7 @@
 using AutoMapper;
+using DataAccess.Context;
 using DataAccess.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
@@ -15,6 +17,7 @@ public class ReportService : IReportService
     private readonly IClientRepository _clientRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly ProxarDbContext _context;
     private readonly IMapper _mapper;
 
     public ReportService(
@@ -23,6 +26,7 @@ public class ReportService : IReportService
         IClientRepository clientRepository,
         IAccountRepository accountRepository,
         ICompanyRepository companyRepository,
+        ProxarDbContext context,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
@@ -30,22 +34,44 @@ public class ReportService : IReportService
         _clientRepository = clientRepository;
         _accountRepository = accountRepository;
         _companyRepository = companyRepository;
+        _context = context;
         _mapper = mapper;
     }
 
     public async Task<TicketsReportDto> GetTicketsReportAsync(TicketsReportRequest request, Guid companyId)
     {
-        var tickets = await _ticketRepository.GetFilteredAsync(
-            companyId,
-            request.DateFrom,
-            request.DateTo,
-            request.ClientId,
-            request.State,
-            request.Type,
-            request.Priority,
-            request.AssignedToId,
-            request.CreatedById
-        );
+        var query = _context.Tickets
+            .IgnoreQueryFilters()
+            .Include(t => t.Client)
+            .Include(t => t.CreatedBy)
+            .Include(t => t.AssignedTo)
+            .Where(t => t.CompanyId == companyId);
+
+        if (request.DateFrom.HasValue)
+            query = query.Where(t => t.CreatedAt >= request.DateFrom.Value);
+
+        if (request.DateTo.HasValue)
+            query = query.Where(t => t.CreatedAt <= request.DateTo.Value);
+
+        if (request.ClientId.HasValue)
+            query = query.Where(t => t.ClientId == request.ClientId.Value);
+
+        if (!string.IsNullOrWhiteSpace(request.State) && Enum.TryParse<TicketState>(request.State, out var ticketState))
+            query = query.Where(t => t.Status == ticketState);
+
+        if (!string.IsNullOrWhiteSpace(request.Type) && Enum.TryParse<TicketType>(request.Type, out var ticketType))
+            query = query.Where(t => t.Type == ticketType);
+
+        if (!string.IsNullOrWhiteSpace(request.Priority) && Enum.TryParse<Priority>(request.Priority, out var ticketPriority))
+            query = query.Where(t => t.Priority == ticketPriority);
+
+        if (request.AssignedToId.HasValue)
+            query = query.Where(t => t.AssignedToId == request.AssignedToId.Value);
+
+        if (request.CreatedById.HasValue)
+            query = query.Where(t => t.CreatedById == request.CreatedById.Value);
+
+        var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
 
         var ticketDtos = _mapper.Map<List<TicketDto>>(tickets);
 
@@ -90,15 +116,32 @@ public class ReportService : IReportService
 
     public async Task<MovementsReportDto> GetMovementsReportAsync(MovementsReportRequest request, Guid companyId)
     {
-        var movements = await _movementRepository.GetFilteredAsync(
-            companyId,
-            request.DateFrom,
-            request.DateTo,
-            request.AccountId,
-            request.TicketId,
-            request.Type,
-            request.PaymentMethod
-        );
+        var movementQuery = _context.BoxMovements
+            .IgnoreQueryFilters()
+            .Include(m => m.Account)
+            .Include(m => m.User)
+            .Include(m => m.Ticket)
+            .Where(m => m.CompanyId == companyId);
+
+        if (request.DateFrom.HasValue)
+            movementQuery = movementQuery.Where(m => m.MovementDate >= request.DateFrom.Value);
+
+        if (request.DateTo.HasValue)
+            movementQuery = movementQuery.Where(m => m.MovementDate <= request.DateTo.Value);
+
+        if (request.AccountId.HasValue)
+            movementQuery = movementQuery.Where(m => m.AccountId == request.AccountId.Value);
+
+        if (request.TicketId.HasValue)
+            movementQuery = movementQuery.Where(m => m.TicketId == request.TicketId.Value);
+
+        if (!string.IsNullOrWhiteSpace(request.Type) && Enum.TryParse<MovementType>(request.Type, out var movementType))
+            movementQuery = movementQuery.Where(m => m.Type == movementType);
+
+        if (!string.IsNullOrWhiteSpace(request.PaymentMethod) && Enum.TryParse<PaymentMethod>(request.PaymentMethod, out var paymentMethod))
+            movementQuery = movementQuery.Where(m => m.Method == paymentMethod);
+
+        var movements = await movementQuery.OrderByDescending(m => m.MovementDate).ToListAsync();
 
         var movementDtos = _mapper.Map<List<BoxMovementDto>>(movements);
 
@@ -160,19 +203,20 @@ public class ReportService : IReportService
         var previousMonthStartUtc = BusinessDateTime.ConvertBusinessDateToUtc(previousMonthStart, company?.TimeZoneId);
 
         // Tickets totales
-        var allTickets = await _ticketRepository.GetAllByCompanyAsync(companyId);
+        var allTickets = await _context.Tickets
+            .IgnoreQueryFilters()
+            .Where(t => t.CompanyId == companyId)
+            .ToListAsync();
         var openTickets = allTickets.Count(t =>
             t.Status != TicketState.Completado && t.Status != TicketState.Descartado);
         var completedTickets = allTickets.Count(t => t.Status == TicketState.Completado);
         var discardedTickets = allTickets.Count(t => t.Status == TicketState.Descartado);
 
         // Finanzas mes actual
-        var currentMonthMovements = await _movementRepository.GetFilteredAsync(
-            companyId,
-            currentMonthStartUtc,
-            null,
-            null, null, null, null
-        );
+        var currentMonthMovements = await _context.BoxMovements
+            .IgnoreQueryFilters()
+            .Where(m => m.CompanyId == companyId && m.MovementDate >= currentMonthStartUtc)
+            .ToListAsync();
 
         var currentMonthIncome = currentMonthMovements
             .Where(m => m.Type == MovementType.Ingreso)
@@ -183,12 +227,12 @@ public class ReportService : IReportService
             .Sum(m => m.Amount);
 
         // Finanzas mes anterior
-        var previousMonthMovements = await _movementRepository.GetFilteredAsync(
-            companyId,
-            previousMonthStartUtc,
-            currentMonthStartUtc,
-            null, null, null, null
-        );
+        var previousMonthMovements = await _context.BoxMovements
+            .IgnoreQueryFilters()
+            .Where(m => m.CompanyId == companyId &&
+                        m.MovementDate >= previousMonthStartUtc &&
+                        m.MovementDate <= currentMonthStartUtc)
+            .ToListAsync();
 
         var previousMonthIncome = previousMonthMovements
             .Where(m => m.Type == MovementType.Ingreso)
@@ -200,11 +244,17 @@ public class ReportService : IReportService
             : 0;
 
         // Balance total de cuentas
-        var accounts = await _accountRepository.GetAllByCompanyAsync(companyId);
+        var accounts = await _context.Accounts
+            .IgnoreQueryFilters()
+            .Where(a => a.CompanyId == companyId)
+            .ToListAsync();
         var totalBalance = accounts.Sum(a => a.CurrentBalance);
 
         // Clientes
-        var allClients = await _clientRepository.GetAllByCompanyAsync(companyId);
+        var allClients = await _context.Clients
+            .IgnoreQueryFilters()
+            .Where(c => c.CompanyId == companyId)
+            .ToListAsync();
         var activeClients = allTickets
             .Where(t => t.CreatedAt >= currentMonthStart)
             .Select(t => t.ClientId)
