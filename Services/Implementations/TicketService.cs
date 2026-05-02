@@ -222,6 +222,10 @@ public class TicketService : ITicketService
 
     public async Task SoftDeleteTicketAsync(Guid id, Guid companyId, Guid deletedBy)
     {
+        // CONSISTENCIA: Propagar soft delete a registros relacionados
+        // Esto evita datos huérfanos en reportes y mantiene coherencia
         await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
+        await _boxMovementRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
+        await _historyRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
     }
 }

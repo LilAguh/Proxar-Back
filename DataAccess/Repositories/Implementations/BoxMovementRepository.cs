@@ -169,4 +169,16 @@ public class BoxMovementRepository : IBoxMovementRepository
 
         await UpdateAsync(movement);
     }
+
+    public async Task SoftDeleteByTicketAsync(Guid ticketId, Guid companyId, Guid deletedBy)
+    {
+        var now = DateTime.UtcNow;
+
+        await _context.BoxMovements
+            .Where(m => m.TicketId == ticketId && m.CompanyId == companyId && m.Active)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(m => m.Active, false)
+                .SetProperty(m => m.DeletedAt, now)
+                .SetProperty(m => m.DeletedBy, deletedBy));
+    }
 }

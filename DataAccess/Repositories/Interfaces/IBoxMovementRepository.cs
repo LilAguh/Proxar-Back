@@ -23,4 +23,5 @@ public interface IBoxMovementRepository
     Task<BoxMovement> AddAsync(BoxMovement movement);
     Task UpdateAsync(BoxMovement movement);
     Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy);
+    Task SoftDeleteByTicketAsync(Guid ticketId, Guid companyId, Guid deletedBy);
 }
