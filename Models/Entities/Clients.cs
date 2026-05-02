@@ -3,6 +3,7 @@ namespace Models;
 public class Client
 {
     public Guid Id { get; set; }
+    public byte[] RowVersion { get; set; } = [];
 
         // Multi-tenant
     public Guid CompanyId { get; set; }

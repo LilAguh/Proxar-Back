@@ -5,6 +5,7 @@ namespace Models;
 public class BoxMovement
 {
     public Guid Id { get; set; }
+    public byte[] RowVersion { get; set; } = [];
     public int Number { get; set; } // Autoincremental for display
 
     // Multi-tenant

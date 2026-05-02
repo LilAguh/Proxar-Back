@@ -5,6 +5,7 @@ namespace Models;
 public class Account
 {
     public Guid Id { get; set; }
+    public byte[] RowVersion { get; set; } = [];
 
 
      // Multi-tenant

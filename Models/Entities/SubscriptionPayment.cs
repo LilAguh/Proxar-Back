@@ -6,6 +6,7 @@ public class SubscriptionPayment
 {
     // Identificación
     public Guid Id { get; set; }
+    public byte[] RowVersion { get; set; } = [];
     public Guid SubscriptionId { get; set; }
     public Guid CompanyId { get; set; }
 

@@ -217,5 +217,19 @@ public class ProxarDbContext : DbContext
                   .HasForeignKey(e => e.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
+
+        // ============================================
+        // CONCURRENCIA OPTIMISTA (ROW VERSION)
+        // ============================================
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (entityType.ClrType.GetProperty("RowVersion") is null)
+                continue;
+
+            modelBuilder.Entity(entityType.ClrType)
+                .Property<byte[]>("RowVersion")
+                .IsRowVersion()
+                .IsConcurrencyToken();
+        }
     }
 }
