@@ -150,7 +150,9 @@ public class AuthService : IAuthService
 
     public async Task<UserDto> RegisterUserAsync(RegisterUserRequest request, Guid companyId)
     {
-        var existingUser = await _userRepository.GetByEmailAsync(request.Email, companyId);
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, companyId);
         if (existingUser != null)
             throw new ConflictException(AppMessages.Auth.EmailAlreadyRegistered);
 
@@ -160,7 +162,7 @@ public class AuthService : IAuthService
         {
             CompanyId = companyId,
             Name = request.Name,
-            Email = request.Email,
+            Email = normalizedEmail,
             PasswordHash = passwordHash,
             Role = request.Role,
             Active = true,
@@ -177,15 +179,17 @@ public class AuthService : IAuthService
         var user = await _userRepository.GetByIdAsync(userId, companyId)
             ?? throw new NotFoundException(AppMessages.User.NotFound);
 
-        if (user.Email != request.Email)
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        if (user.Email != normalizedEmail)
         {
-            var existingUser = await _userRepository.GetByEmailAsync(request.Email, companyId);
+            var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, companyId);
             if (existingUser != null)
                 throw new ConflictException(AppMessages.Auth.EmailAlreadyInUse);
         }
 
         user.Name = request.Name;
-        user.Email = request.Email;
+        user.Email = normalizedEmail;
         user.Role = request.Role;
         user.Active = request.Active;
 
