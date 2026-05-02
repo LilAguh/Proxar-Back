@@ -146,16 +146,20 @@ public class BoxMovementService : IBoxMovementService
 
     public async Task SoftDeleteMovementAsync(Guid id, Guid companyId, Guid deletedBy)
     {
+        // CRÍTICO: Cargar solo los datos necesarios SIN tracking y SIN includes
+        // Si cargamos con GetByIdAsync (que incluye Account), el grafo con saldo viejo
+        // podría contaminar el contexto y sobrescribir la actualización atómica
         var movement = await _movementRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Movement.NotFound);
 
-        // CONCURRENCIA: Revertir saldo de forma atómica
+        // CONCURRENCIA: Revertir saldo de forma atómica ANTES del soft delete
         // Ingreso se resta, Egreso se suma (operación inversa al registro)
         var delta = movement.Type == Models.Enums.MovementType.Ingreso
             ? -movement.Amount
             : movement.Amount;
         await _accountRepository.UpdateBalanceAtomicAsync(movement.AccountId, companyId, delta);
 
+        // Soft delete usa ExecuteUpdateAsync (no carga ni guarda grafo)
         await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
     }
 }

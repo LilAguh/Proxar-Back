@@ -159,15 +159,20 @@ public class BoxMovementRepository : IBoxMovementRepository
 
     public async Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy)
     {
-        var movement = await GetByIdAsync(id, companyId);
-        if (movement == null)
+        // CRÍTICO: Usar ExecuteUpdateAsync para evitar sobrescribir saldo de Account
+        // Si usamos Update(movement), el grafo cargado (con Account de saldo viejo)
+        // sobrescribiría la actualización atómica del saldo hecha previamente
+        var now = DateTime.UtcNow;
+
+        var affectedRows = await _context.BoxMovements
+            .Where(m => m.Id == id && m.CompanyId == companyId)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(m => m.Active, false)
+                .SetProperty(m => m.DeletedAt, now)
+                .SetProperty(m => m.DeletedBy, deletedBy));
+
+        if (affectedRows == 0)
             throw new KeyNotFoundException("Movimiento no encontrado");
-
-        movement.Active = false;
-        movement.DeletedAt = DateTime.UtcNow;
-        movement.DeletedBy = deletedBy;
-
-        await UpdateAsync(movement);
     }
 
     public async Task SoftDeleteByTicketAsync(Guid ticketId, Guid companyId, Guid deletedBy)
