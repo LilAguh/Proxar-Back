@@ -106,10 +106,10 @@ public class BoxMovementService : IBoxMovementService
         // Convertir fecha de negocio a UTC usando timezone de la empresa
         var movementDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(request.MovementDate, company.TimeZoneId);
 
-        // VALIDACIÓN CRÍTICA: verificar que la caja esté abierta para la fecha del movimiento
-        var businessDate = BusinessDateTime.GetBusinessDate(movementDateUtc, company.TimeZoneId);
-        var businessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company.TimeZoneId);
-        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateUtc);
+        // VALIDACIÓN CRÍTICA: siempre exigir caja abierta del día actual de la empresa
+        var todayBusinessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company.TimeZoneId);
+        var todayBusinessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(todayBusinessDate, company.TimeZoneId);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, todayBusinessDateUtc);
 
         if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
         {
