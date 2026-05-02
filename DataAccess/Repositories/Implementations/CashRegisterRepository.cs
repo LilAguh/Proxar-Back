@@ -24,6 +24,15 @@ public class CashRegisterRepository : ICashRegisterRepository
             .FirstOrDefaultAsync(r => r.Id == id && r.CompanyId == companyId);
     }
 
+    public async Task<CashRegister?> GetOpenAsync(Guid companyId)
+    {
+        return await _context.CashRegisters
+            .Include(r => r.Entries).ThenInclude(e => e.Account)
+            .Include(r => r.OpenedBy)
+            .Include(r => r.ClosedBy)
+            .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.Status == CashRegisterStatus.Open);
+    }
+
     public async Task<CashRegister?> GetTodayAsync(Guid companyId, DateTime businessDate)
     {
         return await _context.CashRegisters

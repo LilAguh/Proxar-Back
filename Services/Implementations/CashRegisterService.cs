@@ -86,6 +86,11 @@ public class CashRegisterService : ICashRegisterService
         var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
         var utcDate = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company?.TimeZoneId);
 
+        // Regla de flujo: solo puede existir una caja abierta por empresa
+        var existingOpenRegister = await _cashRegisterRepository.GetOpenAsync(companyId);
+        if (existingOpenRegister != null)
+            throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
+
         if (await _cashRegisterRepository.GetTodayAsync(companyId, utcDate) != null)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
 
@@ -114,8 +119,16 @@ public class CashRegisterService : ICashRegisterService
         var register = await _cashRegisterRepository.GetByIdAsync(registerId, companyId)
             ?? throw new NotFoundException(AppMessages.CashRegister.NotFound);
 
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var todayBusinessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var todayBusinessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(todayBusinessDate, company?.TimeZoneId);
+
         if (register.Status == CashRegisterStatus.Closed)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyClosed);
+
+        // Regla de flujo: solo se puede cerrar la caja abierta del día actual
+        if (register.Date.Date != todayBusinessDateUtc.Date)
+            throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
 
         foreach (var closeEntry in request.Entries)
         {
@@ -131,7 +144,7 @@ public class CashRegisterService : ICashRegisterService
             register.Notes = request.Notes;
 
         await _cashRegisterRepository.UpdateAsync(register);
-        var movements = await GetMovementsForBusinessDateAsync(companyId, register.Date, (await _companyRepository.GetByIdAsync(companyId))?.TimeZoneId);
+        var movements = await GetMovementsForBusinessDateAsync(companyId, register.Date, company?.TimeZoneId);
         return MapToDto(register, movements);
     }
 
