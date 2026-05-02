@@ -55,4 +55,9 @@ public static class AppMessages
         public const string AlreadyClosed = "Este registro ya fue cerrado";
         public const string NotOpenForDate = "No se puede registrar un movimiento sin haber abierto la caja del día";
     }
+
+    public static class Subscription
+    {
+        public const string NotFound = "Suscripción no encontrada";
+    }
 }
