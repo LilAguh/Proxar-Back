@@ -41,5 +41,11 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.TicketNumber, opt => opt.MapFrom(src => src.Ticket != null ? src.Ticket.Number : (int?)null));
         CreateMap<RegisterMovementRequest, BoxMovement>()
             .ForMember(dest => dest.RegisteredAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+
+        // Subscription mappings
+        CreateMap<Subscription, SubscriptionDto>()
+            .ForMember(dest => dest.CompanyName, opt => opt.MapFrom(src => src.Company.Name))
+            .ForMember(dest => dest.Plan, opt => opt.MapFrom(src => src.Plan.ToString()))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
     }
 }
