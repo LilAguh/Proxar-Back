@@ -51,7 +51,8 @@ public class SubscriptionsController : BaseApiController
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SubscriptionDto>> GetMySubscription()
     {
-        var subscription = await _subscriptionService.GetByCompanyIdAsync(CompanyId);
+        var companyId = GetCurrentCompanyId();
+        var subscription = await _subscriptionService.GetByCompanyIdAsync(companyId);
         if (subscription == null)
             return NotFound(new { message = "No se encontró una suscripción activa para esta empresa" });
 
