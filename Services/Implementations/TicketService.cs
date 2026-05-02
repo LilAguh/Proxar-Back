@@ -1,4 +1,5 @@
 using AutoMapper;
+using DataAccess.Context;
 using DataAccess.Repositories.Interfaces;
 using Exceptions;
 using Models;
@@ -30,6 +31,7 @@ public class TicketService : ITicketService
     private readonly IBoxMovementRepository _boxMovementRepository;
     private readonly ICashRegisterRepository _cashRegisterRepository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly ProxarDbContext _context;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -40,6 +42,7 @@ public class TicketService : ITicketService
         IBoxMovementRepository boxMovementRepository,
         ICashRegisterRepository cashRegisterRepository,
         ICompanyRepository companyRepository,
+        ProxarDbContext context,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
@@ -49,6 +52,7 @@ public class TicketService : ITicketService
         _boxMovementRepository = boxMovementRepository;
         _cashRegisterRepository = cashRegisterRepository;
         _companyRepository = companyRepository;
+        _context = context;
         _mapper = mapper;
     }
 
@@ -222,10 +226,20 @@ public class TicketService : ITicketService
 
     public async Task SoftDeleteTicketAsync(Guid id, Guid companyId, Guid deletedBy)
     {
-        // CONSISTENCIA: Propagar soft delete a registros relacionados
-        // Esto evita datos huérfanos en reportes y mantiene coherencia
-        await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
-        await _boxMovementRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
-        await _historyRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // CONSISTENCIA: Propagar soft delete a registros relacionados de forma atómica
+            await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
+            await _boxMovementRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
+            await _historyRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
+
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }
