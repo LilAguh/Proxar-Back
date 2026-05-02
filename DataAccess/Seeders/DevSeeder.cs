@@ -635,32 +635,55 @@ public static class DevSeeder
 
             foreach (var company in companiesWithoutSubscription)
             {
-                // Crear suscripción Trial para nuevas empresas
+                var now = DateTime.UtcNow;
+                var periodStart = now.AddDays(-10);
+                var periodEnd = now.AddDays(20);
+
+                // Crear suscripción activa para empresas existentes
                 var subscription = new Subscription
                 {
                     Id = Guid.NewGuid(),
                     CompanyId = company.Id,
                     Plan = SubscriptionPlan.Basic,
-                    Status = SubscriptionStatus.Trial,
+                    Status = SubscriptionStatus.Active,
                     MonthlyFee = 29999m,
-                    IsOnTrial = true,
-                    TrialStartedAt = DateTime.UtcNow,
-                    TrialEndsAt = DateTime.UtcNow.AddDays(30),
-                    CurrentPeriodStart = DateTime.UtcNow,
-                    CurrentPeriodEnd = DateTime.UtcNow.AddDays(30),
-                    NextBillingDate = DateTime.UtcNow.AddDays(31),
+                    IsOnTrial = false,
+                    CurrentPeriodStart = periodStart,
+                    CurrentPeriodEnd = periodEnd,
+                    NextBillingDate = periodEnd.AddDays(1),
                     FailedPaymentAttempts = 0,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    LastSuccessfulPaymentAt = periodStart,
+                    CreatedAt = now,
+                    UpdatedAt = now
                 };
 
                 subscriptionsToAdd.Add(subscription);
+
+                // Crear pago de ejemplo asociado a la suscripción
+                paymentsToAdd.Add(new SubscriptionPayment
+                {
+                    Id = Guid.NewGuid(),
+                    SubscriptionId = subscription.Id,
+                    CompanyId = company.Id,
+                    Amount = subscription.MonthlyFee,
+                    Currency = "ARS",
+                    Status = PaymentStatus.Success,
+                    PeriodStart = periodStart,
+                    PeriodEnd = periodEnd,
+                    MercadoPagoPaymentId = $"seed-payment-{company.Slug}",
+                    MercadoPagoStatus = "approved",
+                    AttemptedAt = periodStart,
+                    CompletedAt = periodStart,
+                    CreatedAt = periodStart
+                });
             }
 
             context.Subscriptions.AddRange(subscriptionsToAdd);
+            context.SubscriptionPayments.AddRange(paymentsToAdd);
             context.SaveChanges();
 
-            Console.WriteLine($"✅ Creadas {subscriptionsToAdd.Count} suscripciones Trial para empresas existentes");
+            Console.WriteLine($"✅ Creadas {subscriptionsToAdd.Count} suscripciones activas para empresas existentes");
+            Console.WriteLine($"✅ Creados {paymentsToAdd.Count} pagos de ejemplo para suscripciones existentes");
         }
         catch (Exception ex)
         {
