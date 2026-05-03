@@ -183,8 +183,8 @@ public class TicketService : ITicketService
             ?? throw new NotFoundException(AppMessages.Company.NotFound);
 
         var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company.TimeZoneId);
-        var businessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company.TimeZoneId);
-        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateUtc);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly);
 
         if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
         {
