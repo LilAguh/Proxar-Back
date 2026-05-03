@@ -112,8 +112,8 @@ public class BoxMovementService : IBoxMovementService
 
         // VALIDACIÓN CRÍTICA: siempre exigir caja abierta del día actual de la empresa
         var todayBusinessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company.TimeZoneId);
-        var todayBusinessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(todayBusinessDate, company.TimeZoneId);
-        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, todayBusinessDateUtc);
+        var todayBusinessDateOnly = DateOnly.FromDateTime(todayBusinessDate);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, todayBusinessDateOnly);
 
         if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
         {
