@@ -216,7 +216,7 @@ public class ProxarDbContext : DbContext
         });
 
         // ============================================
-        // CONCURRENCIA OPTIMISTA (ROW VERSION)
+        // CONCURRENCIA OPTIMISTA (RowVersion)
         // ============================================
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
