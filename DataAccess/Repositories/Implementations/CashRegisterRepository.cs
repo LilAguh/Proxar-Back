@@ -33,21 +33,21 @@ public class CashRegisterRepository : ICashRegisterRepository
             .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.Status == CashRegisterStatus.Open);
     }
 
-    public async Task<CashRegister?> GetTodayAsync(Guid companyId, DateTime businessDate)
+    public async Task<CashRegister?> GetTodayAsync(Guid companyId, DateOnly businessDate)
     {
         return await _context.CashRegisters
             .Include(r => r.Entries).ThenInclude(e => e.Account)
             .Include(r => r.OpenedBy)
             .Include(r => r.ClosedBy)
-            .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.Date == businessDate.Date);
+            .FirstOrDefaultAsync(r => r.CompanyId == companyId && r.Date == businessDate);
     }
 
-    public async Task<CashRegister?> GetPreviousClosedAsync(Guid companyId, DateTime beforeDate)
+    public async Task<CashRegister?> GetPreviousClosedAsync(Guid companyId, DateOnly beforeDate)
     {
         return await _context.CashRegisters
             .Include(r => r.Entries).ThenInclude(e => e.Account)
             .Where(r => r.CompanyId == companyId &&
-                        r.Date < beforeDate.Date &&
+                        r.Date < beforeDate &&
                         r.Status == CashRegisterStatus.Closed)
             .OrderByDescending(r => r.Date)
             .FirstOrDefaultAsync();
