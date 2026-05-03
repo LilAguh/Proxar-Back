@@ -10,8 +10,13 @@ public class CashRegister
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;
 
-    // El día al que corresponde esta apertura (solo fecha, sin hora)
-    public DateTime Date { get; set; }
+    /// <summary>
+    /// Business date (timezone-aware). Stored as DATE in PostgreSQL.
+    /// Always represents the business day in the company's timezone, not UTC.
+    /// Example: If a company in Argentina (UTC-3) opens the register on May 2nd,
+    /// this field stores "2026-05-02" regardless of UTC time.
+    /// </summary>
+    public DateOnly Date { get; set; }
 
     public CashRegisterStatus Status { get; set; } = CashRegisterStatus.Open;
 
