@@ -32,14 +32,14 @@ public class CashRegisterService : ICashRegisterService
     {
         var company = await _companyRepository.GetByIdAsync(companyId);
         var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
-        var utcDate = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company?.TimeZoneId);
-        var existing = await _cashRegisterRepository.GetTodayAsync(companyId, utcDate);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
+        var existing = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly);
 
         if (existing != null)
             return new CashRegisterPreviewDto { AlreadyOpenToday = true };
 
         var accounts = await _accountRepository.GetActiveByCompanyAsync(companyId);
-        var previous = await _cashRegisterRepository.GetPreviousClosedAsync(companyId, utcDate);
+        var previous = await _cashRegisterRepository.GetPreviousClosedAsync(companyId, businessDateOnly);
 
         var preview = new CashRegisterPreviewDto
         {
@@ -84,20 +84,20 @@ public class CashRegisterService : ICashRegisterService
     {
         var company = await _companyRepository.GetByIdAsync(companyId);
         var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
-        var utcDate = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company?.TimeZoneId);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
 
         // Regla de flujo: solo puede existir una caja abierta por empresa
         var existingOpenRegister = await _cashRegisterRepository.GetOpenAsync(companyId);
         if (existingOpenRegister != null)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
 
-        if (await _cashRegisterRepository.GetTodayAsync(companyId, utcDate) != null)
+        if (await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly) != null)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
 
         var register = new CashRegister
         {
             CompanyId = companyId,
-            Date = utcDate,
+            Date = businessDateOnly,
             Status = CashRegisterStatus.Open,
             OpenedAt = DateTime.UtcNow,
             OpenedById = userId,
@@ -127,7 +127,8 @@ public class CashRegisterService : ICashRegisterService
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyClosed);
 
         // Regla de flujo: solo se puede cerrar la caja abierta del día actual
-        if (register.Date.Date != todayBusinessDateUtc.Date)
+        var todayBusinessDateOnly = DateOnly.FromDateTime(todayBusinessDate);
+        if (register.Date != todayBusinessDateOnly)
             throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
 
         var movements = (await GetMovementsForBusinessDateAsync(companyId, todayBusinessDate, company?.TimeZoneId)).ToList();
@@ -166,8 +167,8 @@ public class CashRegisterService : ICashRegisterService
     {
         var company = await _companyRepository.GetByIdAsync(companyId);
         var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
-        var utcDate = BusinessDateTime.ConvertBusinessDateToUtc(businessDate, company?.TimeZoneId);
-        var register = await _cashRegisterRepository.GetTodayAsync(companyId, utcDate);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
+        var register = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly);
         if (register == null) return null;
 
         var movements = await GetMovementsForBusinessDateAsync(companyId, businessDate, company?.TimeZoneId);
@@ -179,7 +180,8 @@ public class CashRegisterService : ICashRegisterService
         var register = await _cashRegisterRepository.GetByIdAsync(id, companyId);
         if (register == null) return null;
         var company = await _companyRepository.GetByIdAsync(companyId);
-        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(register.Date, company?.TimeZoneId);
+        var businessDate = register.Date.ToDateTime(TimeOnly.MinValue);
+        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(businessDate, company?.TimeZoneId);
         var movements = await _boxMovementRepository.GetByDateRangeAsync(startUtc, endUtc, companyId);
         return MapToDto(register, movements);
     }
