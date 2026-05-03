@@ -49,7 +49,7 @@ public static class DevSeeder
             FiscalCity = "Córdoba",
             FiscalProvince = "Córdoba",
             FiscalPostalCode = "X5000",
-            StartOfActivities = new DateTime(1989, 3, 15),
+            StartOfActivities = DateTime.SpecifyKind(new DateTime(1989, 3, 15), DateTimeKind.Utc),
             DefaultSalesPoint = 1,
 
             // Contacto
@@ -83,7 +83,7 @@ public static class DevSeeder
             FiscalCity = "Salta",
             FiscalProvince = "Salta",
             FiscalPostalCode = "A4400",
-            StartOfActivities = new DateTime(2005, 7, 20),
+            StartOfActivities = DateTime.SpecifyKind(new DateTime(2005, 7, 20), DateTimeKind.Utc),
             DefaultSalesPoint = 1,
 
             // Contacto
@@ -114,7 +114,7 @@ public static class DevSeeder
             FiscalCity = "Córdoba",
             FiscalProvince = "Córdoba",
             FiscalPostalCode = "X5000",
-            StartOfActivities = new DateTime(2018, 11, 1),
+            StartOfActivities = DateTime.SpecifyKind(new DateTime(2018, 11, 1), DateTimeKind.Utc),
 
             // Contacto
             Email = "ventas@alumcor.com.ar",
