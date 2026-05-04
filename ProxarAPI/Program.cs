@@ -205,6 +205,9 @@ try
         });
     });
 
+    // Configurar licencia QuestPDF (Community es gratis para proyectos pequeños)
+    QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())

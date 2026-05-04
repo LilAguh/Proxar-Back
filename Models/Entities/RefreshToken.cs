@@ -3,7 +3,7 @@ namespace Models;
 public class RefreshToken
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public byte[] RowVersion { get; set; } = [];
+    public byte[]? RowVersion { get; set; } = [];
     public Guid UserId { get; set; }
     public string TokenHash { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }

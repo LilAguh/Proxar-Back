@@ -6,7 +6,7 @@ public class Company
 {
     // Identificación
     public Guid Id { get; set; }
-    public byte[] RowVersion { get; set; } = [];
+    public byte[]? RowVersion { get; set; }
     public string Slug { get; set; } = string.Empty; // URL-friendly: "aberturas-sagitario"
     public string Name { get; set; } = string.Empty; // Nombre comercial
     public string? LegalName { get; set; } // Razón social (puede ser igual a Name)

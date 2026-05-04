@@ -47,5 +47,12 @@ public class AutoMapperProfile : Profile
             .ForMember(dest => dest.CompanyName, opt => opt.MapFrom(src => src.Company.Name))
             .ForMember(dest => dest.Plan, opt => opt.MapFrom(src => src.Plan.ToString()))
             .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+
+        // Budget mappings
+        CreateMap<Budget, BudgetDto>()
+            .ForMember(dest => dest.TicketNumber, opt => opt.MapFrom(src => src.Ticket.Number))
+            .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedBy.Name));
+
+        CreateMap<BudgetItem, BudgetItemDto>();
     }
 }

@@ -5,7 +5,7 @@ namespace Models;
 public class CashRegister
 {
     public Guid Id { get; set; }
-    public byte[] RowVersion { get; set; } = [];
+    public byte[]? RowVersion { get; set; } = [];
 
     public Guid CompanyId { get; set; }
     public Company Company { get; set; } = null!;

@@ -3,6 +3,7 @@ using System;
 using DataAccess.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace DataAccess.Migrations
 {
     [DbContext(typeof(ProxarDbContext))]
-    partial class ProxarDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260503152824_AddRowVersionToBudget")]
+    partial class AddRowVersionToBudget
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -61,6 +64,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -128,6 +132,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -248,9 +253,9 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasDefaultValueSql("'\\x00000000000000000000000000000001'::bytea");
+                        .HasColumnType("bytea");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -374,6 +379,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -416,6 +422,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -476,6 +483,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -589,6 +597,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -641,6 +650,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -744,6 +754,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -823,6 +834,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -903,6 +915,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -971,6 +984,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
@@ -1044,6 +1058,7 @@ namespace DataAccess.Migrations
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
+                        .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("bytea");
 
