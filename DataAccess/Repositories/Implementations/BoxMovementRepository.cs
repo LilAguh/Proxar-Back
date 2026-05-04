@@ -86,7 +86,6 @@ public class BoxMovementRepository : IBoxMovementRepository
     {
         return await _context.BoxMovements
             .Include(bm => bm.Account)
-            .Include(bm => bm.Ticket)
             .Include(bm => bm.User)
             .Where(bm => bm.TicketId == ticketId && bm.CompanyId == companyId)
             .OrderByDescending(bm => bm.MovementDate)
