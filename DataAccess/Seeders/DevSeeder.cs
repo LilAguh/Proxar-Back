@@ -599,6 +599,111 @@ public static class DevSeeder
         Console.WriteLine("✅ 60 movimientos de caja creados");
 
         // ============================================
+        // 7. PRESUPUESTOS (5 tickets con presupuestos)
+        // ============================================
+        var budgets = new List<Budget>();
+        var budgetItems = new List<BudgetItem>();
+
+        // Crear 5 tickets específicos en estado "Presupuestado" con presupuestos
+        var ticketsConPresupuesto = tickets.Where(t => t.Status == TicketState.Presupuestado).Take(5).ToList();
+
+        // Si no hay suficientes tickets en estado Presupuestado, cambiar algunos
+        if (ticketsConPresupuesto.Count < 5)
+        {
+            var ticketsAdicionales = tickets
+                .Where(t => t.Status != TicketState.Completado && t.Status != TicketState.Descartado)
+                .Take(5 - ticketsConPresupuesto.Count)
+                .ToList();
+
+            foreach (var t in ticketsAdicionales)
+            {
+                t.Status = TicketState.Presupuestado;
+                ticketsConPresupuesto.Add(t);
+            }
+        }
+
+        var budgetDescriptions = new[]
+        {
+            new[] { "Vidrio templado 6mm", "Mano de obra instalación", "Herrajes acero inoxidable" },
+            new[] { "Aluminio anodizado perfil 40x40", "Vidrio DVH 4+9+4", "Kit herrajes ventana", "Instalación y colocación" },
+            new[] { "Espejo 4mm con marco", "Pegamento especial espejo", "Mano de obra" },
+            new[] { "Mampara corrediza 2 hojas", "Vidrio templado 8mm", "Herrajes corrediza premium", "Instalación" },
+            new[] { "Abertura aluminio blanco 150x120", "Vidrio DVH color bronce", "Mosquitero incluido", "Colocación" }
+        };
+
+        for (int i = 0; i < ticketsConPresupuesto.Count; i++)
+        {
+            var ticket = ticketsConPresupuesto[i];
+            var budget = new Budget
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = company.Id,
+                TicketId = ticket.Id,
+                Number = i + 1,
+                Status = i < 3 ? BudgetStatus.Sent : (i == 3 ? BudgetStatus.Viewed : BudgetStatus.Draft),
+
+                // Snapshot del cliente
+                ClientName = clients.First(c => c.Id == ticket.ClientId).Name,
+                ClientPhone = clients.First(c => c.Id == ticket.ClientId).Phone,
+                ClientEmail = clients.First(c => c.Id == ticket.ClientId).Email,
+                ClientAddress = clients.First(c => c.Id == ticket.ClientId).Address,
+
+                ValidUntil = DateTime.UtcNow.AddDays(15),
+                Notes = "Presupuesto generado automáticamente",
+                Terms = "Validez: 15 días. Seña del 50% al aprobar. Saldo contra entrega.",
+
+                Discount = i == 2 ? 5000m : 0m, // Un presupuesto con descuento
+
+                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 10)),
+                CreatedById = users[random.Next(users.Length)].Id,
+
+                PdfUrl = null // Se genera on-demand al solicitar el PDF
+            };
+
+            budgets.Add(budget);
+
+            // Crear items para el presupuesto
+            var descriptions = budgetDescriptions[i];
+            decimal subtotalTotal = 0;
+            decimal ivaTotal = 0;
+
+            for (int j = 0; j < descriptions.Length; j++)
+            {
+                var quantity = random.Next(1, 4);
+                var unitPrice = random.Next(5000, 50000);
+                var ivaPercentage = 21m;
+
+                var itemSubtotal = quantity * unitPrice;
+                var itemIva = itemSubtotal * (ivaPercentage / 100);
+
+                subtotalTotal += itemSubtotal;
+                ivaTotal += itemIva;
+
+                budgetItems.Add(new BudgetItem
+                {
+                    Id = Guid.NewGuid(),
+                    BudgetId = budget.Id,
+                    Quantity = quantity,
+                    Description = descriptions[j],
+                    UnitPrice = unitPrice,
+                    IVAPercentage = ivaPercentage,
+                    Subtotal = itemSubtotal,
+                    IVAAmount = itemIva,
+                    Total = itemSubtotal + itemIva
+                });
+            }
+
+            // Calcular totales del presupuesto
+            budget.Subtotal = subtotalTotal;
+            budget.IVAAmount = ivaTotal;
+            budget.Total = subtotalTotal + ivaTotal - budget.Discount;
+        }
+
+        context.Budgets.AddRange(budgets);
+        context.BudgetItems.AddRange(budgetItems);
+        Console.WriteLine($"✅ {budgets.Count} presupuestos creados con {budgetItems.Count} items");
+
+        // ============================================
         // GUARDAR TODO
         // ============================================
         context.SaveChanges();
