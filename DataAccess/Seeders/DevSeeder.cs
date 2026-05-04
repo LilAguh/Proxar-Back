@@ -634,23 +634,24 @@ public static class DevSeeder
         for (int i = 0; i < ticketsConPresupuesto.Count; i++)
         {
             var ticket = ticketsConPresupuesto[i];
+            var client = clients.First(c => c.Id == ticket.ClientId);
             var budget = new Budget
             {
                 Id = Guid.NewGuid(),
                 CompanyId = company.Id,
                 TicketId = ticket.Id,
+                ClientId = client.Id,
                 Number = i + 1,
                 Status = i < 3 ? BudgetStatus.Sent : (i == 3 ? BudgetStatus.Viewed : BudgetStatus.Draft),
 
                 // Snapshot del cliente
-                ClientName = clients.First(c => c.Id == ticket.ClientId).Name,
-                ClientPhone = clients.First(c => c.Id == ticket.ClientId).Phone,
-                ClientEmail = clients.First(c => c.Id == ticket.ClientId).Email,
-                ClientAddress = clients.First(c => c.Id == ticket.ClientId).Address,
+                ClientName = client.Name,
+                ClientPhone = client.Phone,
+                ClientEmail = client.Email,
+                ClientAddress = client.Address,
 
                 ValidUntil = DateTime.UtcNow.AddDays(15),
-                Notes = "Presupuesto generado automáticamente",
-                Terms = "Validez: 15 días. Seña del 50% al aprobar. Saldo contra entrega.",
+                ValidDays = 15,
 
                 Discount = i == 2 ? 5000m : 0m, // Un presupuesto con descuento
 
