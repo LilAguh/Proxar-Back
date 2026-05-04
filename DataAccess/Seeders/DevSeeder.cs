@@ -599,26 +599,40 @@ public static class DevSeeder
         Console.WriteLine("✅ 60 movimientos de caja creados");
 
         // ============================================
-        // 7. PRESUPUESTOS (5 tickets con presupuestos)
+        // 7. PRESUPUESTOS (para tickets Presupuestado, Aprobado, En Proceso)
         // ============================================
         var budgets = new List<Budget>();
         var budgetItems = new List<BudgetItem>();
 
-        // Crear 5 tickets específicos en estado "Presupuestado" con presupuestos
-        var ticketsConPresupuesto = tickets.Where(t => t.Status == TicketState.Presupuestado).Take(5).ToList();
+        // Obtener tickets que necesitan presupuestos (Presupuestado, Aprobado, EnProceso)
+        var ticketsConPresupuesto = tickets
+            .Where(t => t.Status == TicketState.Presupuestado ||
+                       t.Status == TicketState.Aprobado ||
+                       t.Status == TicketState.EnProceso)
+            .Take(10) // Hasta 10 presupuestos
+            .ToList();
 
-        // Si no hay suficientes tickets en estado Presupuestado, cambiar algunos
-        if (ticketsConPresupuesto.Count < 5)
+        // Si no hay suficientes, cambiar algunos tickets
+        if (ticketsConPresupuesto.Count < 10)
         {
             var ticketsAdicionales = tickets
-                .Where(t => t.Status != TicketState.Completado && t.Status != TicketState.Descartado)
-                .Take(5 - ticketsConPresupuesto.Count)
+                .Where(t => t.Status != TicketState.Completado &&
+                           t.Status != TicketState.Descartado &&
+                           !ticketsConPresupuesto.Contains(t))
+                .Take(10 - ticketsConPresupuesto.Count)
                 .ToList();
 
-            foreach (var t in ticketsAdicionales)
+            // Cambiar estados de manera lógica
+            for (int i = 0; i < ticketsAdicionales.Count; i++)
             {
-                t.Status = TicketState.Presupuestado;
-                ticketsConPresupuesto.Add(t);
+                if (i < 3)
+                    ticketsAdicionales[i].Status = TicketState.Presupuestado;
+                else if (i < 6)
+                    ticketsAdicionales[i].Status = TicketState.Aprobado;
+                else
+                    ticketsAdicionales[i].Status = TicketState.EnProceso;
+
+                ticketsConPresupuesto.Add(ticketsAdicionales[i]);
             }
         }
 
@@ -635,6 +649,19 @@ public static class DevSeeder
         {
             var ticket = ticketsConPresupuesto[i];
             var client = clients.First(c => c.Id == ticket.ClientId);
+
+            // Determinar status del presupuesto según estado del ticket
+            BudgetStatus budgetStatus;
+            if (ticket.Status == TicketState.Presupuestado)
+            {
+                // Presupuestos en distintos estados
+                budgetStatus = i < 2 ? BudgetStatus.Sent : (i == 2 ? BudgetStatus.Viewed : BudgetStatus.Draft);
+            }
+            else // Aprobado o EnProceso
+            {
+                budgetStatus = BudgetStatus.Approved;
+            }
+
             var budget = new Budget
             {
                 Id = Guid.NewGuid(),
@@ -642,7 +669,7 @@ public static class DevSeeder
                 TicketId = ticket.Id,
                 ClientId = client.Id,
                 Number = i + 1,
-                Status = i < 3 ? BudgetStatus.Sent : (i == 3 ? BudgetStatus.Viewed : BudgetStatus.Draft),
+                Status = budgetStatus,
 
                 // Snapshot del cliente
                 ClientName = client.Name,
@@ -655,7 +682,7 @@ public static class DevSeeder
 
                 Discount = i == 2 ? 5000m : 0m, // Un presupuesto con descuento
 
-                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(1, 10)),
+                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(5, 20)),
                 CreatedById = users[random.Next(users.Length)].Id,
 
                 PdfUrl = null // Se genera on-demand al solicitar el PDF
@@ -702,7 +729,7 @@ public static class DevSeeder
 
         context.Budgets.AddRange(budgets);
         context.BudgetItems.AddRange(budgetItems);
-        Console.WriteLine($"✅ {budgets.Count} presupuestos creados con {budgetItems.Count} items");
+        Console.WriteLine($"✅ {budgets.Count} presupuestos creados con {budgetItems.Count} items (Presupuestado, Aprobado, En Proceso)");
 
         // ============================================
         // GUARDAR TODO
