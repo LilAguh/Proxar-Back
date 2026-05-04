@@ -69,13 +69,14 @@ public class TicketService : ITicketService
         var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
-        var historyTask = _historyRepository.GetByTicketIdAsync(id);
-        var movementsTask = _boxMovementRepository.GetByTicketAsync(id, companyId);
-        await Task.WhenAll(historyTask, movementsTask);
+        // IMPORTANTE: No usar Task.WhenAll con el mismo DbContext — no es thread-safe
+        // Ejecutar queries secuencialmente
+        var history = await _historyRepository.GetByTicketIdAsync(id);
+        var movements = await _boxMovementRepository.GetByTicketAsync(id, companyId);
 
         var dto = _mapper.Map<TicketDetailsDto>(ticket);
-        dto.History = _mapper.Map<List<TicketHistoryDto>>(historyTask.Result);
-        dto.Movements = _mapper.Map<List<BoxMovementDto>>(movementsTask.Result);
+        dto.History = _mapper.Map<List<TicketHistoryDto>>(history);
+        dto.Movements = _mapper.Map<List<BoxMovementDto>>(movements);
 
         return dto;
     }
