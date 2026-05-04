@@ -691,7 +691,7 @@ public static class DevSeeder
             budgets.Add(budget);
 
             // Crear items para el presupuesto
-            var descriptions = budgetDescriptions[i];
+            var descriptions = budgetDescriptions[i % budgetDescriptions.Length];
             decimal subtotalTotal = 0;
             decimal ivaTotal = 0;
 
