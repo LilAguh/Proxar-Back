@@ -54,8 +54,9 @@ try
             var uri = new Uri(connectionString);
             var user = uri.UserInfo.Split(':')[0];
             var password = uri.UserInfo.Split(':')[1];
+            var port = uri.Port == -1 ? 5432 : uri.Port; // Puerto por defecto PostgreSQL
 
-            connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            connectionString = $"Host={uri.Host};Port={port};Database={uri.LocalPath.TrimStart('/')};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
         }
 
         options.UseNpgsql(connectionString);
