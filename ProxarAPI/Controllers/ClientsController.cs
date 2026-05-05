@@ -34,6 +34,14 @@ public class ClientsController : BaseApiController
         return Ok(await _clientService.GetActiveByCompanyAsync(companyId));
     }
 
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IEnumerable<ClientDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<ClientDto>>> Search([FromQuery] string? name = null)
+    {
+        var companyId = GetCurrentCompanyId();
+        return Ok(await _clientService.SearchByNameAsync(companyId, name ?? string.Empty));
+    }
+
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ClientDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

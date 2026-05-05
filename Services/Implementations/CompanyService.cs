@@ -65,9 +65,54 @@ public class CompanyService : ICompanyService
         var company = await _companyRepository.GetByIdAsync(id)
             ?? throw new NotFoundException(AppMessages.Company.NotFound);
 
+        // Identificación
         company.Name = request.Name;
+        company.LegalName = request.LegalName;
         company.LogoUrl = request.LogoUrl;
-        company.Active = request.Active;
+        company.Website = request.Website;
+
+        // Datos fiscales
+        company.CUIT = request.CUIT;
+
+        if (!string.IsNullOrWhiteSpace(request.IVA))
+        {
+            if (!Enum.TryParse<Models.Enums.IVACondition>(request.IVA, out var ivaCondition))
+            {
+                throw new BusinessRuleException("Condición de IVA inválida");
+            }
+
+            company.IVA = ivaCondition;
+        }
+        else
+        {
+            company.IVA = null;
+        }
+
+        company.IIBB = request.IIBB;
+        company.FiscalAddress = request.FiscalAddress;
+        company.FiscalCity = request.FiscalCity;
+        company.FiscalProvince = request.FiscalProvince;
+        company.FiscalPostalCode = request.FiscalPostalCode;
+        company.StartOfActivities = request.StartOfActivities;
+        company.DefaultSalesPoint = request.DefaultSalesPoint;
+
+        // Contacto
+        company.Email = request.Email;
+        company.Phone = request.Phone;
+        company.MobilePhone = request.MobilePhone;
+        company.SupportEmail = request.SupportEmail;
+
+        // Configuración regional
+        if (!string.IsNullOrWhiteSpace(request.Currency))
+            company.Currency = request.Currency;
+        if (!string.IsNullOrWhiteSpace(request.TimeZoneId))
+            company.TimeZoneId = request.TimeZoneId;
+        if (!string.IsNullOrWhiteSpace(request.Language))
+            company.Language = request.Language;
+        if (!string.IsNullOrWhiteSpace(request.DateFormat))
+            company.DateFormat = request.DateFormat;
+
+        company.UpdatedAt = DateTime.UtcNow;
 
         await _companyRepository.UpdateAsync(company);
         return _mapper.Map<CompanyDto>(company);

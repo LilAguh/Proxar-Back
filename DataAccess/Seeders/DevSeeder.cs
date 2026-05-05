@@ -14,6 +14,11 @@ public static class DevSeeder
         // ============================================
         ResetSequences(context);
 
+        // ============================================
+        // SUSCRIPCIONES (SIEMPRE) - para empresas existentes
+        // ============================================
+        EnsureSubscriptions(context);
+
         // Verificar si ya hay datos
         if (context.Users.Any())
         {
@@ -30,32 +35,186 @@ public static class DevSeeder
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
             Name = "Aberturas Sagitario",
+            LegalName = "Aberturas Sagitario S.R.L.",
             Slug = "sagitario",
             Active = true,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = "30-71234567-8",
+            IVA = IVACondition.ResponsableInscripto,
+            IIBB = "CM-123456",
+            FiscalAddress = "Av. Colón 1234",
+            FiscalCity = "Córdoba",
+            FiscalProvince = "Córdoba",
+            FiscalPostalCode = "X5000",
+            StartOfActivities = DateTime.SpecifyKind(new DateTime(1989, 3, 15), DateTimeKind.Utc),
+            DefaultSalesPoint = 1,
+
+            // Contacto
+            Email = "contacto@sagitario.com.ar",
+            Phone = "+54 351 4567890",
+            MobilePhone = "+54 9 351 6789012",
+            SupportEmail = "soporte@sagitario.com.ar",
+
+            // Configuración regional
+            Currency = "ARS",
+            TimeZoneId = "America/Argentina/Buenos_Aires",
+            Language = "es-AR",
+            DateFormat = "dd/MM/yyyy",
         };
 
         var company2 = new Company
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
             Name = "Vidrios del Norte",
+            LegalName = "Vidrios del Norte S.A.",
             Slug = "vidrios-norte",
             Active = true,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = "30-65432109-4",
+            IVA = IVACondition.ResponsableInscripto,
+            IIBB = "SA-987654",
+            FiscalAddress = "Ruta 9 Km 1240",
+            FiscalCity = "Salta",
+            FiscalProvince = "Salta",
+            FiscalPostalCode = "A4400",
+            StartOfActivities = DateTime.SpecifyKind(new DateTime(2005, 7, 20), DateTimeKind.Utc),
+            DefaultSalesPoint = 1,
+
+            // Contacto
+            Email = "info@vidriosdelnorte.com",
+            Phone = "+54 387 4321000",
+
+            // Configuración regional
+            Currency = "ARS",
+            TimeZoneId = "America/Argentina/Buenos_Aires",
+            Language = "es-AR",
+            DateFormat = "dd/MM/yyyy",
         };
 
         var company3 = new Company
         {
             Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
             Name = "AlumCor S.A.",
+            LegalName = "AlumCor Sociedad Anónima",
             Slug = "alumcor",
             Active = true,
             CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = "30-55555555-5",
+            IVA = IVACondition.Monotributista,
+            FiscalAddress = "Bv. San Juan 567",
+            FiscalCity = "Córdoba",
+            FiscalProvince = "Córdoba",
+            FiscalPostalCode = "X5000",
+            StartOfActivities = DateTime.SpecifyKind(new DateTime(2018, 11, 1), DateTimeKind.Utc),
+
+            // Contacto
+            Email = "ventas@alumcor.com.ar",
+            Phone = "+54 351 4111222",
+
+            // Configuración regional
+            Currency = "ARS",
+            TimeZoneId = "America/Argentina/Buenos_Aires",
+            Language = "es-AR",
+            DateFormat = "dd/MM/yyyy",
         };
 
         context.Companies.AddRange(company1, company2, company3);
         context.SaveChanges(); // Guardar companies primero
         Console.WriteLine("✅ 3 empresas creadas");
+
+        // ============================================
+        // SUSCRIPCIONES
+        // ============================================
+        var subscription1 = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company1.Id,
+            Plan = SubscriptionPlan.Pro,
+            Status = SubscriptionStatus.Trial,
+            MonthlyFee = 49999m,
+            IsOnTrial = true,
+            TrialStartedAt = DateTime.UtcNow.AddDays(-1),
+            TrialEndsAt = DateTime.UtcNow.AddDays(29),
+            CurrentPeriodStart = DateTime.UtcNow.AddDays(-1),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(29),
+            NextBillingDate = DateTime.UtcNow.AddDays(30),
+            FailedPaymentAttempts = 0,
+            CreatedAt = DateTime.UtcNow.AddDays(-1),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var subscription2 = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company2.Id,
+            Plan = SubscriptionPlan.Basic,
+            Status = SubscriptionStatus.Active,
+            MonthlyFee = 29999m,
+            IsOnTrial = false,
+            CurrentPeriodStart = DateTime.UtcNow.AddDays(-15),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(15),
+            NextBillingDate = DateTime.UtcNow.AddDays(16),
+            MercadoPagoPreapprovalId = "fake-preapproval-id-123",
+            MercadoPagoCustomerId = "fake-customer-id-456",
+            LastFourDigits = "1234",
+            CardBrand = "visa",
+            CardHolderName = "Carlos Vidrios",
+            FailedPaymentAttempts = 0,
+            LastSuccessfulPaymentAt = DateTime.UtcNow.AddMonths(-1),
+            CreatedAt = DateTime.UtcNow.AddMonths(-6),
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var subscription3 = new Subscription
+        {
+            Id = Guid.NewGuid(),
+            CompanyId = company3.Id,
+            Plan = SubscriptionPlan.Basic,
+            Status = SubscriptionStatus.Trial,
+            MonthlyFee = 29999m,
+            IsOnTrial = true,
+            TrialStartedAt = DateTime.UtcNow.AddDays(-16),
+            TrialEndsAt = DateTime.UtcNow.AddDays(-1), // Trial ya expiró (debería pasar a Expired)
+            CurrentPeriodStart = DateTime.UtcNow.AddDays(-16),
+            CurrentPeriodEnd = DateTime.UtcNow.AddDays(-1),
+            FailedPaymentAttempts = 0,
+            CreatedAt = DateTime.UtcNow.AddDays(-16),
+            UpdatedAt = DateTime.UtcNow.AddDays(-1)
+        };
+
+        context.Subscriptions.AddRange(subscription1, subscription2, subscription3);
+        context.SaveChanges();
+        Console.WriteLine("✅ 3 suscripciones creadas");
+
+        // Crear un pago de ejemplo para Vidrios del Norte
+        var payment1 = new SubscriptionPayment
+        {
+            Id = Guid.NewGuid(),
+            SubscriptionId = subscription2.Id,
+            CompanyId = company2.Id,
+            Amount = 29999m,
+            Currency = "ARS",
+            Status = PaymentStatus.Success,
+            PeriodStart = DateTime.UtcNow.AddMonths(-2).AddDays(-15),
+            PeriodEnd = DateTime.UtcNow.AddMonths(-1).AddDays(-15),
+            MercadoPagoPaymentId = "fake-payment-id-789",
+            MercadoPagoStatus = "approved",
+            CompletedAt = DateTime.UtcNow.AddMonths(-1),
+            CreatedAt = DateTime.UtcNow.AddMonths(-1)
+        };
+
+        context.SubscriptionPayments.Add(payment1);
+        context.SaveChanges();
+        Console.WriteLine("✅ 1 pago de suscripción creado");
 
         // Usar company1 (Sagitario) como empresa principal para los datos de prueba
         var company = company1;
@@ -69,7 +228,7 @@ public static class DevSeeder
             CompanyId = company.Id,
             Name = "Admin",
             Email = "admin@sagitario.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -135,7 +294,7 @@ public static class DevSeeder
             CompanyId = company2.Id,
             Name = "Carlos Vidrios",
             Email = "admin@vidriosnorte.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -148,7 +307,7 @@ public static class DevSeeder
             CompanyId = company3.Id,
             Name = "Patricia Aluminio",
             Email = "admin@alumcor.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -440,6 +599,164 @@ public static class DevSeeder
         Console.WriteLine("✅ 60 movimientos de caja creados");
 
         // ============================================
+        // 7. PRESUPUESTOS (para tickets Presupuestado, Aprobado, En Proceso)
+        // ============================================
+        var budgets = new List<Budget>();
+        var budgetItems = new List<BudgetItem>();
+
+        // Obtener tickets que necesitan presupuestos (Presupuestado, Aprobado, EnProceso)
+        var ticketsConPresupuesto = tickets
+            .Where(t => t.Status == TicketState.Presupuestado ||
+                       t.Status == TicketState.Aprobado ||
+                       t.Status == TicketState.EnProceso)
+            .Take(10) // Hasta 10 presupuestos
+            .ToList();
+
+        // Si no hay suficientes, cambiar algunos tickets
+        if (ticketsConPresupuesto.Count < 10)
+        {
+            var ticketsAdicionales = tickets
+                .Where(t => t.Status != TicketState.Completado &&
+                           t.Status != TicketState.Descartado &&
+                           !ticketsConPresupuesto.Contains(t))
+                .Take(10 - ticketsConPresupuesto.Count)
+                .ToList();
+
+            // Cambiar estados de manera lógica
+            for (int i = 0; i < ticketsAdicionales.Count; i++)
+            {
+                if (i < 3)
+                    ticketsAdicionales[i].Status = TicketState.Presupuestado;
+                else if (i < 6)
+                    ticketsAdicionales[i].Status = TicketState.Aprobado;
+                else
+                    ticketsAdicionales[i].Status = TicketState.EnProceso;
+
+                ticketsConPresupuesto.Add(ticketsAdicionales[i]);
+            }
+        }
+
+        var budgetDescriptions = new[]
+        {
+            new[] { "Vidrio templado 6mm", "Mano de obra instalación", "Herrajes acero inoxidable" },
+            new[] { "Aluminio anodizado perfil 40x40", "Vidrio DVH 4+9+4", "Kit herrajes ventana", "Instalación y colocación" },
+            new[] { "Espejo 4mm con marco", "Pegamento especial espejo", "Mano de obra" },
+            new[] { "Mampara corrediza 2 hojas", "Vidrio templado 8mm", "Herrajes corrediza premium", "Instalación" },
+            new[] { "Abertura aluminio blanco 150x120", "Vidrio DVH color bronce", "Mosquitero incluido", "Colocación" }
+        };
+
+        for (int i = 0; i < ticketsConPresupuesto.Count; i++)
+        {
+            var ticket = ticketsConPresupuesto[i];
+            var client = clients.First(c => c.Id == ticket.ClientId);
+
+            // Determinar status del presupuesto según estado del ticket
+            BudgetStatus budgetStatus;
+            if (ticket.Status == TicketState.Presupuestado)
+            {
+                // Presupuestos en distintos estados
+                budgetStatus = i < 2 ? BudgetStatus.Sent : (i == 2 ? BudgetStatus.Viewed : BudgetStatus.Draft);
+            }
+            else // Aprobado o EnProceso
+            {
+                budgetStatus = BudgetStatus.Approved;
+            }
+
+            var budget = new Budget
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = company.Id,
+                TicketId = ticket.Id,
+                ClientId = client.Id,
+                Number = i + 1,
+                Status = budgetStatus,
+
+                // Snapshot del cliente
+                ClientName = client.Name,
+                ClientPhone = client.Phone,
+                ClientEmail = client.Email,
+                ClientAddress = client.Address,
+
+                ValidUntil = DateTime.UtcNow.AddDays(15),
+                ValidDays = 15,
+
+                Discount = i == 2 ? 5000m : 0m, // Un presupuesto con descuento
+
+                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(5, 20)),
+                CreatedById = users[random.Next(users.Length)].Id,
+
+                PdfUrl = null // Se genera on-demand al solicitar el PDF
+            };
+
+            budgets.Add(budget);
+
+            // Crear items para el presupuesto
+            var descriptions = budgetDescriptions[i % budgetDescriptions.Length];
+            var tempItems = new List<BudgetItem>();
+            decimal subtotalBeforeDiscount = 0;
+            decimal ivaTotal = 0;
+
+            // 1. Crear items sin descuento
+            for (int j = 0; j < descriptions.Length; j++)
+            {
+                var quantity = random.Next(1, 4);
+                var unitPrice = random.Next(5000, 50000);
+                var ivaPercentage = 21m;
+
+                var itemSubtotal = quantity * unitPrice;
+                var itemIva = itemSubtotal * (ivaPercentage / 100);
+
+                subtotalBeforeDiscount += itemSubtotal;
+                ivaTotal += itemIva;
+
+                tempItems.Add(new BudgetItem
+                {
+                    Id = Guid.NewGuid(),
+                    BudgetId = budget.Id,
+                    Quantity = quantity,
+                    Description = descriptions[j],
+                    UnitPrice = unitPrice,
+                    IVAPercentage = ivaPercentage,
+                    Subtotal = itemSubtotal,
+                    IVAAmount = itemIva,
+                    Total = itemSubtotal + itemIva
+                });
+            }
+
+            // 2. Aplicar descuento si existe (recalcular IVA sobre montos descontados)
+            var subtotalAfterDiscount = subtotalBeforeDiscount - budget.Discount;
+
+            if (budget.Discount > 0 && subtotalBeforeDiscount > 0)
+            {
+                var discountRatio = budget.Discount / subtotalBeforeDiscount;
+                ivaTotal = 0;
+
+                foreach (var item in tempItems)
+                {
+                    var itemDiscountedSubtotal = item.Subtotal * (1 - discountRatio);
+                    var itemIva = itemDiscountedSubtotal * (item.IVAPercentage / 100);
+
+                    item.Subtotal = itemDiscountedSubtotal;
+                    item.IVAAmount = itemIva;
+                    item.Total = itemDiscountedSubtotal + itemIva;
+
+                    ivaTotal += itemIva;
+                }
+            }
+
+            budgetItems.AddRange(tempItems);
+
+            // 3. Calcular totales del presupuesto
+            budget.Subtotal = subtotalAfterDiscount;
+            budget.IVAAmount = ivaTotal;
+            budget.Total = subtotalAfterDiscount + ivaTotal;
+        }
+
+        context.Budgets.AddRange(budgets);
+        context.BudgetItems.AddRange(budgetItems);
+        Console.WriteLine($"✅ {budgets.Count} presupuestos creados con {budgetItems.Count} items (Presupuestado, Aprobado, En Proceso)");
+
+        // ============================================
         // GUARDAR TODO
         // ============================================
         context.SaveChanges();
@@ -455,6 +772,81 @@ public static class DevSeeder
         Console.WriteLine($"   - Saldo Total Sagitario: ${cuentaEfectivo.CurrentBalance + cuentaBanco.CurrentBalance + cuentaMercadoPago.CurrentBalance:N0}");
     }
 
+    private static void EnsureSubscriptions(ProxarDbContext context)
+    {
+        try
+        {
+            // Crear suscripciones para empresas que no las tengan
+            var companiesWithoutSubscription = context.Companies
+                .Where(c => !context.Subscriptions.Any(s => s.CompanyId == c.Id))
+                .ToList();
+
+            if (!companiesWithoutSubscription.Any())
+            {
+                Console.WriteLine("✅ Todas las empresas tienen suscripciones");
+                return;
+            }
+
+            var subscriptionsToAdd = new List<Subscription>();
+            var paymentsToAdd = new List<SubscriptionPayment>();
+
+            foreach (var company in companiesWithoutSubscription)
+            {
+                var now = DateTime.UtcNow;
+                var periodStart = now.AddDays(-10);
+                var periodEnd = now.AddDays(20);
+
+                // Crear suscripción activa para empresas existentes
+                var subscription = new Subscription
+                {
+                    Id = Guid.NewGuid(),
+                    CompanyId = company.Id,
+                    Plan = SubscriptionPlan.Basic,
+                    Status = SubscriptionStatus.Active,
+                    MonthlyFee = 29999m,
+                    IsOnTrial = false,
+                    CurrentPeriodStart = periodStart,
+                    CurrentPeriodEnd = periodEnd,
+                    NextBillingDate = periodEnd.AddDays(1),
+                    FailedPaymentAttempts = 0,
+                    LastSuccessfulPaymentAt = periodStart,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                subscriptionsToAdd.Add(subscription);
+
+                // Crear pago de ejemplo asociado a la suscripción
+                paymentsToAdd.Add(new SubscriptionPayment
+                {
+                    Id = Guid.NewGuid(),
+                    SubscriptionId = subscription.Id,
+                    CompanyId = company.Id,
+                    Amount = subscription.MonthlyFee,
+                    Currency = "ARS",
+                    Status = PaymentStatus.Success,
+                    PeriodStart = periodStart,
+                    PeriodEnd = periodEnd,
+                    MercadoPagoPaymentId = $"seed-payment-{company.Slug}",
+                    MercadoPagoStatus = "approved",
+                    CompletedAt = periodStart,
+                    CreatedAt = periodStart
+                });
+            }
+
+            context.Subscriptions.AddRange(subscriptionsToAdd);
+            context.SubscriptionPayments.AddRange(paymentsToAdd);
+            context.SaveChanges();
+
+            Console.WriteLine($"✅ Creadas {subscriptionsToAdd.Count} suscripciones activas para empresas existentes");
+            Console.WriteLine($"✅ Creados {paymentsToAdd.Count} pagos de ejemplo para suscripciones existentes");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"⚠️  Error creando suscripciones: {ex.Message}");
+        }
+    }
+
     private static void ResetSequences(ProxarDbContext context)
     {
         try
@@ -462,8 +854,8 @@ public static class DevSeeder
             // Reset Tickets.Number sequence
             context.Database.ExecuteSqlRaw(@"
                 SELECT setval(
-                    pg_get_serial_sequence('""Tickets""', 'Number'), 
-                    COALESCE((SELECT MAX(""Number"") FROM ""Tickets""), 0) + 1, 
+                    pg_get_serial_sequence('""Tickets""', 'Number'),
+                    COALESCE((SELECT MAX(""Number"") FROM ""Tickets""), 0) + 1,
                     false
                 );
             ");
@@ -471,8 +863,8 @@ public static class DevSeeder
             // Reset BoxMovements.Number sequence
             context.Database.ExecuteSqlRaw(@"
                 SELECT setval(
-                    pg_get_serial_sequence('""BoxMovements""', 'Number'), 
-                    COALESCE((SELECT MAX(""Number"") FROM ""BoxMovements""), 0) + 1, 
+                    pg_get_serial_sequence('""BoxMovements""', 'Number'),
+                    COALESCE((SELECT MAX(""Number"") FROM ""BoxMovements""), 0) + 1,
                     false
                 );
             ");

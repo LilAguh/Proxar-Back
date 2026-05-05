@@ -22,8 +22,9 @@ public class UserRepository : IUserRepository
 
     public async Task<User?> GetByEmailAsync(string email, Guid companyId)
     {
+        var normalizedEmail = email.Trim().ToLowerInvariant();
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email && u.CompanyId == companyId);
+            .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.CompanyId == companyId);
     }
 
     public async Task<IEnumerable<User>> GetAllByCompanyAsync(Guid companyId)

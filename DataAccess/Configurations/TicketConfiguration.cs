@@ -48,12 +48,14 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
         builder.HasIndex(t => t.Status);
         builder.HasIndex(t => t.ClientId);
         builder.HasIndex(t => t.AssignedToId);
+        builder.HasIndex(t => new { t.CompanyId, t.Status, t.Active });
+        builder.HasIndex(t => new { t.CompanyId, t.CreatedAt });
 
         // Relationships
         builder.HasOne(t => t.Client)
             .WithMany(c => c.Tickets)
             .HasForeignKey(t => t.ClientId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(t => t.CreatedBy)
             .WithMany(u => u.CreatedTickets)

@@ -109,9 +109,26 @@ public class AuthService : IAuthService
         {
             Name = request.CompanyName,
             Slug = normalizedSlug,
+            LegalName = request.LegalName ?? request.CompanyName,
             LogoUrl = request.LogoUrl,
             Active = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = request.CUIT,
+            IVA = request.IVA,
+            IIBB = request.IIBB,
+            FiscalAddress = request.FiscalAddress,
+            FiscalCity = request.FiscalCity,
+            FiscalProvince = request.FiscalProvince,
+            FiscalPostalCode = request.FiscalPostalCode,
+            StartOfActivities = DateTime.SpecifyKind(request.StartOfActivities, DateTimeKind.Utc),
+            DefaultSalesPoint = request.DefaultSalesPoint,
+
+            // Contacto
+            Email = request.CompanyEmail,
+            Phone = request.Phone
         };
 
         var createdCompany = await _companyRepository.CreateAsync(company);
@@ -150,7 +167,9 @@ public class AuthService : IAuthService
 
     public async Task<UserDto> RegisterUserAsync(RegisterUserRequest request, Guid companyId)
     {
-        var existingUser = await _userRepository.GetByEmailAsync(request.Email, companyId);
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, companyId);
         if (existingUser != null)
             throw new ConflictException(AppMessages.Auth.EmailAlreadyRegistered);
 
@@ -160,7 +179,7 @@ public class AuthService : IAuthService
         {
             CompanyId = companyId,
             Name = request.Name,
-            Email = request.Email,
+            Email = normalizedEmail,
             PasswordHash = passwordHash,
             Role = request.Role,
             Active = true,
@@ -177,15 +196,17 @@ public class AuthService : IAuthService
         var user = await _userRepository.GetByIdAsync(userId, companyId)
             ?? throw new NotFoundException(AppMessages.User.NotFound);
 
-        if (user.Email != request.Email)
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        if (user.Email != normalizedEmail)
         {
-            var existingUser = await _userRepository.GetByEmailAsync(request.Email, companyId);
+            var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, companyId);
             if (existingUser != null)
                 throw new ConflictException(AppMessages.Auth.EmailAlreadyInUse);
         }
 
         user.Name = request.Name;
-        user.Email = request.Email;
+        user.Email = normalizedEmail;
         user.Role = request.Role;
         user.Active = request.Active;
 
@@ -195,7 +216,10 @@ public class AuthService : IAuthService
 
     public async Task DeactivateUserAsync(Guid userId, Guid companyId, Guid deletedBy)
     {
+        // SEGURIDAD: Desactivar usuario Y revocar todos sus refresh tokens
+        // Sin esto, el usuario desactivado puede seguir usando tokens existentes
         await _userRepository.SoftDeleteAsync(userId, companyId, deletedBy);
+        await _refreshTokenRepository.RevokeAllForUserAsync(userId, companyId);
     }
 
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request, Guid companyId)
@@ -213,14 +237,9 @@ public class AuthService : IAuthService
     public async Task<AuthResponseDto> RefreshTokenAsync(string refreshToken)
     {
         var tokenHash = HashToken(refreshToken);
-        var stored = await _refreshTokenRepository.GetByTokenHashAsync(tokenHash)
-            ?? throw new UnauthorizedAccessException(AppMessages.Auth.InvalidRefreshToken);
-
-        if (!stored.IsActive)
+        var stored = await _refreshTokenRepository.RevokeIfActiveAsync(tokenHash);
+        if (stored == null)
             throw new UnauthorizedAccessException(AppMessages.Auth.InvalidRefreshToken);
-
-        stored.RevokedAt = DateTime.UtcNow;
-        await _refreshTokenRepository.UpdateAsync(stored);
 
         return await BuildAuthResponseAsync(stored.User);
     }
@@ -246,11 +265,16 @@ public class AuthService : IAuthService
         var (plainRefreshToken, refreshTokenEntity) = GenerateRefreshToken(user);
         await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
+        // Obtener la company del usuario
+        var company = await _companyRepository.GetByIdAsync(user.CompanyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
         return new AuthResponseDto
         {
             Token = accessToken,
             RefreshToken = plainRefreshToken,
             User = _mapper.Map<UserDto>(user),
+            Company = _mapper.Map<CompanyDto>(company),
             ExpiresAt = expiresAt,
             RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt
         };
@@ -264,7 +288,6 @@ public class AuthService : IAuthService
         var entity = new RefreshToken
         {
             UserId = user.Id,
-            CompanyId = user.CompanyId,
             TokenHash = HashToken(plainToken),
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationDays),
             CreatedAt = DateTime.UtcNow

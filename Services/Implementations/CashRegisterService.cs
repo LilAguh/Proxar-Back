@@ -5,6 +5,7 @@ using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -13,27 +14,32 @@ public class CashRegisterService : ICashRegisterService
     private readonly ICashRegisterRepository _cashRegisterRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly IBoxMovementRepository _boxMovementRepository;
+    private readonly ICompanyRepository _companyRepository;
 
     public CashRegisterService(
         ICashRegisterRepository cashRegisterRepository,
         IAccountRepository accountRepository,
-        IBoxMovementRepository boxMovementRepository)
+        IBoxMovementRepository boxMovementRepository,
+        ICompanyRepository companyRepository)
     {
         _cashRegisterRepository = cashRegisterRepository;
         _accountRepository = accountRepository;
         _boxMovementRepository = boxMovementRepository;
+        _companyRepository = companyRepository;
     }
 
     public async Task<CashRegisterPreviewDto> GetOpenPreviewAsync(Guid companyId)
     {
-        var today = DateTime.UtcNow.Date;
-        var existing = await _cashRegisterRepository.GetTodayAsync(companyId);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
+        var existing = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly);
 
         if (existing != null)
             return new CashRegisterPreviewDto { AlreadyOpenToday = true };
 
         var accounts = await _accountRepository.GetActiveByCompanyAsync(companyId);
-        var previous = await _cashRegisterRepository.GetPreviousClosedAsync(companyId, today);
+        var previous = await _cashRegisterRepository.GetPreviousClosedAsync(companyId, businessDateOnly);
 
         var preview = new CashRegisterPreviewDto
         {
@@ -76,15 +82,22 @@ public class CashRegisterService : ICashRegisterService
 
     public async Task<CashRegisterDto> OpenAsync(OpenCashRegisterRequest request, Guid userId, Guid companyId)
     {
-        var today = DateTime.UtcNow.Date;
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
 
-        if (await _cashRegisterRepository.GetTodayAsync(companyId) != null)
+        // Regla de flujo: solo puede existir una caja abierta por empresa
+        var existingOpenRegister = await _cashRegisterRepository.GetOpenAsync(companyId);
+        if (existingOpenRegister != null)
+            throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
+
+        if (await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly) != null)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyOpenToday);
 
         var register = new CashRegister
         {
             CompanyId = companyId,
-            Date = today,
+            Date = businessDateOnly,
             Status = CashRegisterStatus.Open,
             OpenedAt = DateTime.UtcNow,
             OpenedById = userId,
@@ -97,7 +110,8 @@ public class CashRegisterService : ICashRegisterService
         };
 
         var created = await _cashRegisterRepository.AddAsync(register);
-        return MapToDto(created, []);
+        var movements = await GetMovementsForBusinessDateAsync(companyId, businessDate, company?.TimeZoneId);
+        return MapToDto(created, movements);
     }
 
     public async Task<CashRegisterDto> CloseAsync(Guid registerId, CloseCashRegisterRequest request, Guid userId, Guid companyId)
@@ -105,14 +119,38 @@ public class CashRegisterService : ICashRegisterService
         var register = await _cashRegisterRepository.GetByIdAsync(registerId, companyId)
             ?? throw new NotFoundException(AppMessages.CashRegister.NotFound);
 
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var todayBusinessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var todayBusinessDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(todayBusinessDate, company?.TimeZoneId);
+
         if (register.Status == CashRegisterStatus.Closed)
             throw new BusinessRuleException(AppMessages.CashRegister.AlreadyClosed);
+
+        // Regla de flujo: solo se puede cerrar la caja abierta del día actual
+        var todayBusinessDateOnly = DateOnly.FromDateTime(todayBusinessDate);
+        if (register.Date != todayBusinessDateOnly)
+            throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
+
+        var movements = (await GetMovementsForBusinessDateAsync(companyId, todayBusinessDate, company?.TimeZoneId)).ToList();
 
         foreach (var closeEntry in request.Entries)
         {
             var entry = register.Entries.FirstOrDefault(e => e.AccountId == closeEntry.AccountId);
-            if (entry != null)
-                entry.ClosingAmount = closeEntry.ClosingAmount;
+            if (entry == null) continue;
+
+            var accountMovements = movements.Where(m => m.AccountId == entry.AccountId);
+            var movementNet = accountMovements.Sum(m => m.Type == MovementType.Ingreso ? m.Amount : -m.Amount);
+            var expectedClosing = entry.OpeningAmount + movementNet;
+            var difference = Math.Abs(closeEntry.ClosingAmount - expectedClosing);
+
+            if (difference > 0.01m)
+            {
+                throw new BusinessRuleException(
+                    $"Cierre inválido para cuenta '{entry.Account?.Name ?? entry.AccountId.ToString()}'. " +
+                    $"Esperado: {expectedClosing:0.00}, informado: {closeEntry.ClosingAmount:0.00}");
+            }
+
+            entry.ClosingAmount = closeEntry.ClosingAmount;
         }
 
         register.Status = CashRegisterStatus.Closed;
@@ -122,20 +160,29 @@ public class CashRegisterService : ICashRegisterService
             register.Notes = request.Notes;
 
         await _cashRegisterRepository.UpdateAsync(register);
-        return MapToDto(register, []);
+        return MapToDto(register, movements);
     }
 
     public async Task<CashRegisterDto?> GetTodayAsync(Guid companyId)
     {
-        var register = await _cashRegisterRepository.GetTodayAsync(companyId);
-        return register == null ? null : MapToDto(register, []);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company?.TimeZoneId);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
+        var register = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly);
+        if (register == null) return null;
+
+        var movements = await GetMovementsForBusinessDateAsync(companyId, businessDate, company?.TimeZoneId);
+        return MapToDto(register, movements);
     }
 
     public async Task<CashRegisterDto?> GetByIdAsync(Guid id, Guid companyId)
     {
         var register = await _cashRegisterRepository.GetByIdAsync(id, companyId);
         if (register == null) return null;
-        var movements = await _boxMovementRepository.GetByDateRangeAsync(register.Date, register.Date.AddDays(1).AddTicks(-1), companyId);
+        var company = await _companyRepository.GetByIdAsync(companyId);
+        var businessDate = register.Date.ToDateTime(TimeOnly.MinValue);
+        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(businessDate, company?.TimeZoneId);
+        var movements = await _boxMovementRepository.GetByDateRangeAsync(startUtc, endUtc, companyId);
         return MapToDto(register, movements);
     }
 
@@ -143,6 +190,12 @@ public class CashRegisterService : ICashRegisterService
     {
         var registers = await _cashRegisterRepository.GetHistoryAsync(companyId, page, pageSize);
         return registers.Select(r => MapToDto(r, []));
+    }
+
+    private async Task<IEnumerable<BoxMovement>> GetMovementsForBusinessDateAsync(Guid companyId, DateTime businessDate, string? timeZoneId)
+    {
+        var (startUtc, endUtc) = BusinessDateTime.GetUtcRangeForBusinessDate(businessDate, timeZoneId);
+        return await _boxMovementRepository.GetByDateRangeAsync(startUtc, endUtc, companyId);
     }
 
     private static CashRegisterDto MapToDto(CashRegister r, IEnumerable<BoxMovement> movements) => new()
@@ -162,37 +215,39 @@ public class CashRegisterService : ICashRegisterService
             OpeningAmount = e.OpeningAmount,
             ClosingAmount = e.ClosingAmount
         }).ToList(),
-        Movements = movements.Select(m => new BoxMovementDto
-        {
-            Id = m.Id,
-            Number = m.Number,
-            Account = new AccountDto
+        Movements = movements
+            .Where(m => m.Account != null && m.User != null)
+            .Select(m => new BoxMovementDto
             {
-                Id = m.Account!.Id,
-                Name = m.Account.Name,
-                Type = m.Account.Type,
-                CurrentBalance = m.Account.CurrentBalance,
-                Active = m.Account.Active,
-                CreatedAt = m.Account.CreatedAt
-            },
-            TicketNumber = m.Ticket?.Number,
-            User = new UserDto
-            {
-                Id = m.User!.Id,
-                CompanyId = m.User.CompanyId,
-                Name = m.User.Name,
-                Email = m.User.Email,
-                Role = m.User.Role,
-                Active = m.User.Active
-            },
-            Type = m.Type,
-            Amount = m.Amount,
-            Method = m.Method,
-            Concept = m.Concept,
-            VoucherNumber = m.VoucherNumber,
-            Observations = m.Observations,
-            MovementDate = m.MovementDate,
-            RegisteredAt = m.RegisteredAt
-        }).ToList()
+                Id = m.Id,
+                Number = m.Number,
+                Account = new AccountDto
+                {
+                    Id = m.Account.Id,
+                    Name = m.Account.Name,
+                    Type = m.Account.Type,
+                    CurrentBalance = m.Account.CurrentBalance,
+                    Active = m.Account.Active,
+                    CreatedAt = m.Account.CreatedAt
+                },
+                TicketNumber = m.Ticket?.Number,
+                User = new UserDto
+                {
+                    Id = m.User.Id,
+                    CompanyId = m.User.CompanyId,
+                    Name = m.User.Name,
+                    Email = m.User.Email,
+                    Role = m.User.Role,
+                    Active = m.User.Active
+                },
+                Type = m.Type,
+                Amount = m.Amount,
+                Method = m.Method,
+                Concept = m.Concept,
+                VoucherNumber = m.VoucherNumber,
+                Observations = m.Observations,
+                MovementDate = m.MovementDate,
+                RegisteredAt = m.RegisteredAt
+            }).ToList()
     };
 }

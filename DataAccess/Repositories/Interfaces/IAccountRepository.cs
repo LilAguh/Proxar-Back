@@ -9,5 +9,6 @@ public interface IAccountRepository
     Task<IEnumerable<Account>> GetActiveByCompanyAsync(Guid companyId);
     Task<Account> AddAsync(Account account);
     Task UpdateAsync(Account account);
+    Task UpdateBalanceAtomicAsync(Guid accountId, Guid companyId, decimal delta);
     Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy);
 }

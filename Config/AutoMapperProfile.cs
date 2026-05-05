@@ -34,11 +34,25 @@ public class AutoMapperProfile : Profile
         CreateMap<Account, AccountDto>();
         CreateMap<CreateAccountRequest, Account>()
             .ForMember(dest => dest.CurrentBalance, opt => opt.MapFrom(src => src.InitialBalance));
+        CreateMap<UpdateAccountRequest, Account>();
 
         // BoxMovement mappings
         CreateMap<BoxMovement, BoxMovementDto>()
             .ForMember(dest => dest.TicketNumber, opt => opt.MapFrom(src => src.Ticket != null ? src.Ticket.Number : (int?)null));
         CreateMap<RegisterMovementRequest, BoxMovement>()
             .ForMember(dest => dest.RegisteredAt, opt => opt.MapFrom(src => DateTime.UtcNow));
+
+        // Subscription mappings
+        CreateMap<Subscription, SubscriptionDto>()
+            .ForMember(dest => dest.CompanyName, opt => opt.MapFrom(src => src.Company.Name))
+            .ForMember(dest => dest.Plan, opt => opt.MapFrom(src => src.Plan.ToString()))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()));
+
+        // Budget mappings
+        CreateMap<Budget, BudgetDto>()
+            .ForMember(dest => dest.TicketNumber, opt => opt.MapFrom(src => src.Ticket.Number))
+            .ForMember(dest => dest.CreatedByName, opt => opt.MapFrom(src => src.CreatedBy.Name));
+
+        CreateMap<BudgetItem, BudgetItemDto>();
     }
 }

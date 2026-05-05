@@ -1,10 +1,13 @@
 using AutoMapper;
+using DataAccess.Context;
 using DataAccess.Repositories.Interfaces;
 using Exceptions;
 using Models;
+using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
@@ -13,17 +16,26 @@ public class BoxMovementService : IBoxMovementService
     private readonly IBoxMovementRepository _movementRepository;
     private readonly IAccountRepository _accountRepository;
     private readonly ITicketRepository _ticketRepository;
+    private readonly ICompanyRepository _companyRepository;
+    private readonly ICashRegisterRepository _cashRegisterRepository;
+    private readonly ProxarDbContext _context;
     private readonly IMapper _mapper;
 
     public BoxMovementService(
         IBoxMovementRepository movementRepository,
         IAccountRepository accountRepository,
         ITicketRepository ticketRepository,
+        ICompanyRepository companyRepository,
+        ICashRegisterRepository cashRegisterRepository,
+        ProxarDbContext context,
         IMapper mapper)
     {
         _movementRepository = movementRepository;
         _accountRepository = accountRepository;
         _ticketRepository = ticketRepository;
+        _companyRepository = companyRepository;
+        _cashRegisterRepository = cashRegisterRepository;
+        _context = context;
         _mapper = mapper;
     }
 
@@ -41,6 +53,25 @@ public class BoxMovementService : IBoxMovementService
         return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
     }
 
+    public async Task<PagedResultDto<BoxMovementDto>> GetPagedByCompanyAsync(Guid companyId, int page, int pageSize, MovementType? type = null)
+    {
+        var safePage = page < 1 ? 1 : page;
+        var safePageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
+
+        var (items, totalCount) = await _movementRepository.GetPagedByCompanyAsync(companyId, safePage, safePageSize, type);
+        var mappedItems = _mapper.Map<List<BoxMovementDto>>(items);
+        var totalPages = (int)Math.Ceiling(totalCount / (double)safePageSize);
+
+        return new PagedResultDto<BoxMovementDto>
+        {
+            Items = mappedItems,
+            Page = safePage,
+            PageSize = safePageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages == 0 ? 1 : totalPages
+        };
+    }
+
     public async Task<IEnumerable<BoxMovementDto>> GetByAccountAsync(Guid accountId, Guid companyId)
     {
         var movements = await _movementRepository.GetByAccountAsync(accountId, companyId);
@@ -53,10 +84,22 @@ public class BoxMovementService : IBoxMovementService
         return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
     }
 
+    public async Task<IEnumerable<BoxMovementDto>> GetByDateRangeAsync(DateTime from, DateTime to, Guid companyId)
+    {
+        var movements = await _movementRepository.GetByDateRangeAsync(from, to, companyId);
+        return _mapper.Map<IEnumerable<BoxMovementDto>>(movements);
+    }
+
     public async Task<BoxMovementDto> RegisterMovementAsync(RegisterMovementRequest request, Guid userId, Guid companyId)
     {
+        var company = await _companyRepository.GetByIdAsync(companyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
         var account = await _accountRepository.GetByIdAsync(request.AccountId, companyId)
             ?? throw new NotFoundException(AppMessages.Account.NotFound);
+
+        if (!account.Active)
+            throw new BusinessRuleException(AppMessages.Account.Inactive);
 
         if (request.TicketId.HasValue)
         {
@@ -64,51 +107,95 @@ public class BoxMovementService : IBoxMovementService
                 ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
         }
 
-        var movement = new BoxMovement
+        // Convertir fecha de negocio a UTC usando timezone de la empresa
+        var movementDateUtc = BusinessDateTime.ConvertBusinessDateToUtc(request.MovementDate, company.TimeZoneId);
+
+        // VALIDACIÓN CRÍTICA: siempre exigir caja abierta del día actual de la empresa
+        var todayBusinessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company.TimeZoneId);
+        var todayBusinessDateOnly = DateOnly.FromDateTime(todayBusinessDate);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, todayBusinessDateOnly);
+
+        if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
         {
-            CompanyId = companyId,
-            AccountId = request.AccountId,
-            TicketId = request.TicketId,
-            UserId = userId,
-            Type = request.Type,
-            Amount = request.Amount,
-            Method = request.Method,
-            Concept = request.Concept,
-            VoucherNumber = request.VoucherNumber,
-            Observations = request.Observations,
-            MovementDate = DateTime.SpecifyKind(request.MovementDate, DateTimeKind.Utc),
-            Active = true,
-            RegisteredAt = DateTime.UtcNow
-        };
+            throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
+        }
 
-        var createdMovement = await _movementRepository.AddAsync(movement);
+        // NORMALIZACIÓN: Garantizar que Amount siempre sea positivo
+        // Defensa en profundidad: aunque FluentValidation valida Amount > 0,
+        // normalizamos para proteger contra bypass (bugs, integraciones externas)
+        var normalizedAmount = Math.Abs(request.Amount);
 
-        if (movement.Type == Models.Enums.MovementType.Ingreso)
-            account.CurrentBalance += movement.Amount;
-        else
-            account.CurrentBalance -= movement.Amount;
+        // TRANSACCIONALIDAD: Crear movimiento + actualizar saldo en una sola transacción
+        // Si alguna operación falla, ambas se revierten para evitar inconsistencias
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var movement = new BoxMovement
+            {
+                CompanyId = companyId,
+                AccountId = request.AccountId,
+                TicketId = request.TicketId,
+                UserId = userId,
+                Type = request.Type,
+                Amount = normalizedAmount,  // Siempre positivo
+                Method = request.Method,
+                Concept = request.Concept,
+                VoucherNumber = request.VoucherNumber,
+                Observations = request.Observations,
+                MovementDate = movementDateUtc,
+                Active = true,
+                RegisteredAt = DateTime.UtcNow
+            };
 
-        await _accountRepository.UpdateAsync(account);
+            var createdMovement = await _movementRepository.AddAsync(movement);
 
-        return _mapper.Map<BoxMovementDto>(createdMovement);
+            // CONCURRENCIA: Actualización atómica del saldo para evitar condiciones de carrera
+            // SIGNO: Se aplica según Type (Ingreso +, Egreso -). Amount ya está normalizado a positivo.
+            var delta = movement.Type == Models.Enums.MovementType.Ingreso
+                ? movement.Amount
+                : -movement.Amount;
+            await _accountRepository.UpdateBalanceAtomicAsync(account.Id, companyId, delta);
+
+            await transaction.CommitAsync();
+
+            return _mapper.Map<BoxMovementDto>(createdMovement);
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task SoftDeleteMovementAsync(Guid id, Guid companyId, Guid deletedBy)
     {
+        // CRÍTICO: Cargar solo los datos necesarios SIN tracking y SIN includes
+        // Si cargamos con GetByIdAsync (que incluye Account), el grafo con saldo viejo
+        // podría contaminar el contexto y sobrescribir la actualización atómica
         var movement = await _movementRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Movement.NotFound);
 
-        var account = await _accountRepository.GetByIdAsync(movement.AccountId, companyId);
-        if (account != null)
+        // TRANSACCIONALIDAD: Revertir saldo + soft delete en una sola transacción
+        // Si alguna operación falla, ambas se revierten para evitar inconsistencias
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            if (movement.Type == Models.Enums.MovementType.Ingreso)
-                account.CurrentBalance -= movement.Amount;
-            else
-                account.CurrentBalance += movement.Amount;
+            // CONCURRENCIA: Revertir saldo de forma atómica ANTES del soft delete
+            // Ingreso se resta, Egreso se suma (operación inversa al registro)
+            var delta = movement.Type == Models.Enums.MovementType.Ingreso
+                ? -movement.Amount
+                : movement.Amount;
+            await _accountRepository.UpdateBalanceAtomicAsync(movement.AccountId, companyId, delta);
 
-            await _accountRepository.UpdateAsync(account);
+            // Soft delete usa ExecuteUpdateAsync (no carga ni guarda grafo)
+            await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
+
+            await transaction.CommitAsync();
         }
-
-        await _movementRepository.SoftDeleteAsync(id, companyId, deletedBy);
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }

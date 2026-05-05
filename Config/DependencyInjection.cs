@@ -1,5 +1,6 @@
 using DataAccess.Repositories.Implementations;
 using DataAccess.Repositories.Interfaces;
+using DataAccess.Services;
 using Services.Implementations;
 using Services.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +12,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        services.AddScoped<ICompanyRepository, CompanyRepository>(); // ← NUEVO
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<ITicketRepository, TicketRepository>();
@@ -20,13 +21,19 @@ public static class DependencyInjection
         services.AddScoped<ITicketHistoryRepository, TicketHistoryRepository>();
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<IBudgetRepository, BudgetRepository>();
 
         return services;
     }
 
     public static IServiceCollection AddServices(this IServiceCollection services)
 {
-    services.AddScoped<ICompanyService, CompanyService>(); // ← NUEVO
+    // Encryption service (Singleton - used by DbContext)
+    services.AddSingleton<IEncryptionService, AesEncryptionService>();
+
+    // Application services
+    services.AddScoped<ICompanyService, CompanyService>();
     services.AddScoped<IAuthService, AuthService>();
     services.AddScoped<IClientService, ClientService>();
     services.AddScoped<ITicketService, TicketService>();
@@ -34,6 +41,11 @@ public static class DependencyInjection
     services.AddScoped<IBoxMovementService, BoxMovementService>();
     services.AddScoped<IDashboardService, DashboardService>();
     services.AddScoped<ICashRegisterService, CashRegisterService>();
+    services.AddScoped<IReportService, ReportService>();
+    services.AddScoped<ISubscriptionService, SubscriptionService>();
+    services.AddScoped<IPdfService, PdfService>();
+    services.AddScoped<IBudgetService, BudgetService>();
+    services.AddScoped<IAfipService, AfipService>();
 
     return services;
 }

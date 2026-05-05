@@ -1,11 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using Models;
+using DataAccess.Configurations;
+using DataAccess.Converters;
+using DataAccess.Services;
 
 namespace DataAccess.Context;
 
 public class ProxarDbContext : DbContext
 {
-    public ProxarDbContext(DbContextOptions<ProxarDbContext> options) : base(options) { }
+    private readonly IEncryptionService _encryptionService;
+
+    public ProxarDbContext(
+        DbContextOptions<ProxarDbContext> options,
+        IEncryptionService encryptionService) : base(options)
+    {
+        _encryptionService = encryptionService;
+    }
 
     public DbSet<Company> Companies { get; set; }
     public DbSet<User> Users { get; set; }
@@ -17,158 +27,134 @@ public class ProxarDbContext : DbContext
     public DbSet<CashRegister> CashRegisters { get; set; }
     public DbSet<CashRegisterEntry> CashRegisterEntries { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<Subscription> Subscriptions { get; set; }
+    public DbSet<SubscriptionPayment> SubscriptionPayments { get; set; }
+    public DbSet<Budget> Budgets { get; set; }
+    public DbSet<BudgetItem> BudgetItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         // ============================================
-        // COMPANY
+        // APPLY CONFIGURATIONS (enums → string)
         // ============================================
-        modelBuilder.Entity<Company>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => e.Slug).IsUnique();
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Slug).IsRequired().HasMaxLength(100);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
-
-        // ============================================
-        // USER
-        // ============================================
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasIndex(e => new { e.CompanyId, e.Email }).IsUnique();
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.PasswordHash).IsRequired();
-            
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Users)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        modelBuilder.ApplyConfiguration(new CompanyConfiguration());
+        modelBuilder.ApplyConfiguration(new SubscriptionConfiguration());
+        modelBuilder.ApplyConfiguration(new SubscriptionPaymentConfiguration());
+        modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new ClientConfiguration());
+        modelBuilder.ApplyConfiguration(new TicketConfiguration());
+        modelBuilder.ApplyConfiguration(new AccountConfiguration());
+        modelBuilder.ApplyConfiguration(new BoxMovementConfiguration());
+        modelBuilder.ApplyConfiguration(new TicketHistoryConfiguration());
+        modelBuilder.ApplyConfiguration(new BudgetConfiguration());
+        modelBuilder.ApplyConfiguration(new BudgetItemConfiguration());
 
         // ============================================
-        // CLIENT
+        // ENCRYPTION (Value Converters for sensitive fields)
         // ============================================
-        modelBuilder.Entity<Client>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Phone).IsRequired().HasMaxLength(20);
-            entity.Property(e => e.Email).HasMaxLength(100);
-            entity.Property(e => e.Address).HasMaxLength(300);
-            entity.Property(e => e.Notes).HasMaxLength(1000);
+        var encryptedConverter = new EncryptedStringConverter(_encryptionService);
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Clients)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        // Company: CertPassword (AFIP certificate password)
+        modelBuilder.Entity<Company>()
+            .Property(e => e.CertPassword)
+            .HasConversion(encryptedConverter);
 
-        // ============================================
-        // TICKET
-        // ============================================
-        modelBuilder.Entity<Ticket>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Number).ValueGeneratedOnAdd();
-            entity.HasIndex(e => new { e.CompanyId, e.Number }).IsUnique();
-            
-            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Description).HasMaxLength(2000);
-            entity.Property(e => e.Address).HasMaxLength(300);
+        // Subscription: Mercado Pago sensitive tokens
+        modelBuilder.Entity<Subscription>()
+            .Property(e => e.MercadoPagoCardToken)
+            .HasConversion(encryptedConverter);
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Tickets)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Subscription>()
+            .Property(e => e.MercadoPagoPreapprovalId)
+            .HasConversion(encryptedConverter);
 
-            entity.HasOne(e => e.Client)
-                  .WithMany(c => c.Tickets)
-                  .HasForeignKey(e => e.ClientId)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.CreatedBy)
-                  .WithMany(u => u.CreatedTickets)
-                  .HasForeignKey(e => e.CreatedById)
-                  .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasOne(e => e.AssignedTo)
-                  .WithMany(u => u.AssignedTickets)
-                  .HasForeignKey(e => e.AssignedToId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        modelBuilder.Entity<Subscription>()
+            .Property(e => e.MercadoPagoCustomerId)
+            .HasConversion(encryptedConverter);
 
         // ============================================
-        // ACCOUNT
+        // SOFT DELETE QUERY FILTERS
         // ============================================
-        modelBuilder.Entity<Account>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.CurrentBalance).HasPrecision(18, 2);
+        modelBuilder.Entity<Company>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.Accounts)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        modelBuilder.Entity<User>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<Client>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<Ticket>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<Account>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
+
+        modelBuilder.Entity<BoxMovement>()
+            .HasQueryFilter(e => e.Active && e.DeletedAt == null);
 
         // ============================================
-        // BOX MOVEMENT
+        // ADDITIONAL CONFIGURATIONS
         // ============================================
-        modelBuilder.Entity<BoxMovement>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Number).ValueGeneratedOnAdd();
-            entity.HasIndex(e => new { e.CompanyId, e.Number }).IsUnique();
-            
-            entity.Property(e => e.Amount).HasPrecision(18, 2);
-            entity.Property(e => e.Concept).IsRequired().HasMaxLength(300);
-            entity.Property(e => e.VoucherNumber).HasMaxLength(50);
-            entity.Property(e => e.Observations).HasMaxLength(1000);
 
-            entity.HasOne(e => e.Company)
-                  .WithMany(c => c.BoxMovements)
-                  .HasForeignKey(e => e.CompanyId)
-                  .OnDelete(DeleteBehavior.Restrict);
+        // User: índice único por empresa y email
+        modelBuilder.Entity<User>()
+            .HasIndex(e => new { e.CompanyId, e.Email })
+            .IsUnique();
 
-            entity.HasOne(e => e.Account)
-                  .WithMany(a => a.Movements)
-                  .HasForeignKey(e => e.AccountId)
-                  .OnDelete(DeleteBehavior.Restrict);
+        // User: relación con Company
+        modelBuilder.Entity<User>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Users)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasOne(e => e.Ticket)
-                  .WithMany(t => t.Movements)
-                  .HasForeignKey(e => e.TicketId)
-                  .OnDelete(DeleteBehavior.Restrict);
+        // Client: índices adicionales por empresa
+        modelBuilder.Entity<Client>()
+            .HasIndex(e => new { e.CompanyId, e.Active });
 
-            entity.HasOne(e => e.User)
-                  .WithMany(u => u.BoxMovements)
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            
-            // Soft delete global filter
-            entity.HasQueryFilter(e => e.Active && e.DeletedAt == null);
-        });
+        modelBuilder.Entity<Client>()
+            .HasIndex(e => new { e.CompanyId, e.CreatedAt });
+
+        // Client: relación con Company
+        modelBuilder.Entity<Client>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Clients)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Ticket: índice único por empresa y número
+        modelBuilder.Entity<Ticket>()
+            .HasIndex(e => new { e.CompanyId, e.Number })
+            .IsUnique();
+
+        // Ticket: relación con Company
+        modelBuilder.Entity<Ticket>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Tickets)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // Account: relación con Company
+        modelBuilder.Entity<Account>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.Accounts)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // BoxMovement: índice único por empresa y número
+        modelBuilder.Entity<BoxMovement>()
+            .HasIndex(e => new { e.CompanyId, e.Number })
+            .IsUnique();
+
+        // BoxMovement: relación con Company
+        modelBuilder.Entity<BoxMovement>()
+            .HasOne(e => e.Company)
+            .WithMany(c => c.BoxMovements)
+            .HasForeignKey(e => e.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // ============================================
         // CASH REGISTER
@@ -234,24 +220,17 @@ public class ProxarDbContext : DbContext
         });
 
         // ============================================
-        // TICKET HISTORY
+        // CONCURRENCIA OPTIMISTA (RowVersion)
         // ============================================
-        modelBuilder.Entity<TicketHistory>(entity =>
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Comment).HasMaxLength(1000);
-            entity.Property(e => e.PreviousStatus).HasMaxLength(50);
-            entity.Property(e => e.NewStatus).HasMaxLength(50);
+            if (entityType.ClrType.GetProperty("RowVersion") is null)
+                continue;
 
-            entity.HasOne(e => e.Ticket)
-                  .WithMany(t => t.History)
-                  .HasForeignKey(e => e.TicketId)
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(e => e.User)
-                  .WithMany(u => u.TicketHistories)
-                  .HasForeignKey(e => e.UserId)
-                  .OnDelete(DeleteBehavior.Restrict);
-        });
+            modelBuilder.Entity(entityType.ClrType)
+                .Property<byte[]>("RowVersion")
+                .IsRowVersion()
+                .IsConcurrencyToken();
+        }
     }
 }

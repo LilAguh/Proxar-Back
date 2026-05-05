@@ -25,6 +25,11 @@ public class TicketHistoryConfiguration : IEntityTypeConfiguration<TicketHistory
             .IsRequired();
 
         // Relationships
+        builder.HasOne(h => h.Company)
+            .WithMany()
+            .HasForeignKey(h => h.CompanyId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         builder.HasOne(h => h.Ticket)
             .WithMany(t => t.History)
             .HasForeignKey(h => h.TicketId)

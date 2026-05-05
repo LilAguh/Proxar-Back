@@ -5,6 +5,7 @@ namespace Models;
 public class BoxMovement
 {
     public Guid Id { get; set; }
+    public byte[]? RowVersion { get; set; } = [];
     public int Number { get; set; } // Autoincremental for display
 
     // Multi-tenant
@@ -19,7 +20,15 @@ public class BoxMovement
     
     // Properties
     public MovementType Type { get; set; }
+
+    /// <summary>
+    /// Amount is ALWAYS positive. Sign is determined by Type:
+    /// - Ingreso (Income): adds to account balance (+Amount)
+    /// - Egreso (Expense): subtracts from account balance (-Amount)
+    /// BoxMovementService normalizes Amount with Math.Abs() before saving.
+    /// </summary>
     public decimal Amount { get; set; }
+
     public PaymentMethod Method { get; set; }
     public string Concept { get; set; } = string.Empty;
     public string? VoucherNumber { get; set; }

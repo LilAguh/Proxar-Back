@@ -1,4 +1,5 @@
 using AutoMapper;
+using DataAccess.Context;
 using DataAccess.Repositories.Interfaces;
 using Exceptions;
 using Models;
@@ -6,15 +7,31 @@ using Models.Enums;
 using Services.DTOs.Requests;
 using Services.DTOs.Responses;
 using Services.Interfaces;
+using Services.Utilities;
 
 namespace Services.Implementations;
 
 public class TicketService : ITicketService
 {
+    private static readonly IReadOnlyDictionary<TicketState, TicketState[]> AllowedTransitions = new Dictionary<TicketState, TicketState[]>
+    {
+        [TicketState.Nuevo] = [TicketState.EnVisita, TicketState.Completado, TicketState.Descartado],
+        [TicketState.EnVisita] = [TicketState.Presupuestado, TicketState.Completado, TicketState.Descartado],
+        [TicketState.Presupuestado] = [TicketState.Aprobado, TicketState.Descartado],
+        [TicketState.Aprobado] = [TicketState.EnProceso, TicketState.Completado, TicketState.Descartado],
+        [TicketState.EnProceso] = [TicketState.Completado, TicketState.Descartado],
+        [TicketState.Completado] = [],
+        [TicketState.Descartado] = []
+    };
+
     private readonly ITicketRepository _ticketRepository;
     private readonly IClientRepository _clientRepository;
     private readonly IUserRepository _userRepository;
     private readonly ITicketHistoryRepository _historyRepository;
+    private readonly IBoxMovementRepository _boxMovementRepository;
+    private readonly ICashRegisterRepository _cashRegisterRepository;
+    private readonly ICompanyRepository _companyRepository;
+    private readonly ProxarDbContext _context;
     private readonly IMapper _mapper;
 
     public TicketService(
@@ -22,12 +39,20 @@ public class TicketService : ITicketService
         IClientRepository clientRepository,
         IUserRepository userRepository,
         ITicketHistoryRepository historyRepository,
+        IBoxMovementRepository boxMovementRepository,
+        ICashRegisterRepository cashRegisterRepository,
+        ICompanyRepository companyRepository,
+        ProxarDbContext context,
         IMapper mapper)
     {
         _ticketRepository = ticketRepository;
         _clientRepository = clientRepository;
         _userRepository = userRepository;
         _historyRepository = historyRepository;
+        _boxMovementRepository = boxMovementRepository;
+        _cashRegisterRepository = cashRegisterRepository;
+        _companyRepository = companyRepository;
+        _context = context;
         _mapper = mapper;
     }
 
@@ -44,10 +69,14 @@ public class TicketService : ITicketService
         var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
+        // IMPORTANTE: No usar Task.WhenAll con el mismo DbContext — no es thread-safe
+        // Ejecutar queries secuencialmente
         var history = await _historyRepository.GetByTicketIdAsync(id);
+        var movements = await _boxMovementRepository.GetByTicketAsync(id, companyId);
 
         var dto = _mapper.Map<TicketDetailsDto>(ticket);
         dto.History = _mapper.Map<List<TicketHistoryDto>>(history);
+        dto.Movements = _mapper.Map<List<BoxMovementDto>>(movements);
 
         return dto;
     }
@@ -147,6 +176,22 @@ public class TicketService : ITicketService
         var ticket = await _ticketRepository.GetByIdAsync(id, companyId)
             ?? throw new NotFoundException(AppMessages.Ticket.NotFound);
 
+        ValidateStatusTransition(ticket.Status, request.NewStatus);
+
+        // VALIDACIÓN CRÍTICA: verificar que la caja esté abierta para cambiar estados de tickets
+        // Esto garantiza que todo el flujo de trabajo del día esté dentro de una caja abierta
+        var company = await _companyRepository.GetByIdAsync(companyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
+        var businessDate = BusinessDateTime.GetBusinessDate(DateTime.UtcNow, company.TimeZoneId);
+        var businessDateOnly = DateOnly.FromDateTime(businessDate);
+        var cashRegister = await _cashRegisterRepository.GetTodayAsync(companyId, businessDateOnly);
+
+        if (cashRegister == null || cashRegister.Status != CashRegisterStatus.Open)
+        {
+            throw new BusinessRuleException(AppMessages.CashRegister.NotOpenForDate);
+        }
+
         var previousStatus = ticket.Status;
         ticket.Status = request.NewStatus;
 
@@ -171,8 +216,29 @@ public class TicketService : ITicketService
         return _mapper.Map<TicketDto>(ticket);
     }
 
+    private static void ValidateStatusTransition(TicketState currentStatus, TicketState nextStatus)
+    {
+        if (currentStatus == nextStatus)
+            throw new BusinessRuleException(AppMessages.Ticket.InvalidStatusTransition);
+
+        if (!AllowedTransitions.TryGetValue(currentStatus, out var allowedStates) || !allowedStates.Contains(nextStatus))
+            throw new BusinessRuleException(AppMessages.Ticket.InvalidStatusTransition);
+    }
+
     public async Task SoftDeleteTicketAsync(Guid id, Guid companyId, Guid deletedBy)
     {
-        await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // CONSISTENCIA: Propagar soft delete a registros relacionados de forma atómica
+            await _ticketRepository.SoftDeleteAsync(id, companyId, deletedBy);
+            await _boxMovementRepository.SoftDeleteByTicketAsync(id, companyId, deletedBy);
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }

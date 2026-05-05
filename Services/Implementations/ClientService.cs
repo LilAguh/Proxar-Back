@@ -39,6 +39,12 @@ public class ClientService : IClientService
         return _mapper.Map<IEnumerable<ClientDto>>(clients);
     }
 
+    public async Task<IEnumerable<ClientDto>> SearchByNameAsync(Guid companyId, string name)
+    {
+        var clients = await _clientRepository.SearchByNameAsync(companyId, name);
+        return _mapper.Map<IEnumerable<ClientDto>>(clients);
+    }
+
     public async Task<ClientDto> CreateClientAsync(CreateClientRequest request, Guid companyId)
     {
         var client = new Client
@@ -49,6 +55,16 @@ public class ClientService : IClientService
             Email = request.Email,
             Address = request.Address,
             Notes = request.Notes,
+
+            // Datos fiscales
+            DocumentType = request.DocumentType,
+            DocumentNumber = request.DocumentNumber,
+            IVA = request.IVA,
+            FiscalAddress = request.FiscalAddress,
+            FiscalCity = request.FiscalCity,
+            FiscalProvince = request.FiscalProvince,
+            FiscalPostalCode = request.FiscalPostalCode,
+
             Active = true,
             CreatedAt = DateTime.UtcNow,
             ModifiedAt = DateTime.UtcNow
@@ -68,6 +84,15 @@ public class ClientService : IClientService
         client.Email = request.Email;
         client.Address = request.Address;
         client.Notes = request.Notes;
+
+        // Datos fiscales
+        client.DocumentType = request.DocumentType;
+        client.DocumentNumber = request.DocumentNumber;
+        client.IVA = request.IVA;
+        client.FiscalAddress = request.FiscalAddress;
+        client.FiscalCity = request.FiscalCity;
+        client.FiscalProvince = request.FiscalProvince;
+        client.FiscalPostalCode = request.FiscalPostalCode;
 
         await _clientRepository.UpdateAsync(client);
         return _mapper.Map<ClientDto>(client);

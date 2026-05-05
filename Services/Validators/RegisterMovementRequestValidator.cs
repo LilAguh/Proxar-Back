@@ -31,7 +31,9 @@ public class RegisterMovementRequestValidator : AbstractValidator<RegisterMoveme
 
         RuleFor(x => x.MovementDate)
             .NotEmpty().WithMessage("La fecha del movimiento es requerida")
-            .LessThanOrEqualTo(DateTime.UtcNow.AddDays(1))
+            // Permitir hasta +2 días para cubrir diferencias de timezone
+            // La validación exacta se hace en el servicio con el timezone de la empresa
+            .LessThanOrEqualTo(DateTime.UtcNow.AddDays(2))
             .WithMessage("La fecha no puede ser mayor a mañana");
     }
 }

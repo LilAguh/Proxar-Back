@@ -36,6 +36,23 @@ public class ClientRepository : IClientRepository
             .ToListAsync();
     }
 
+    public async Task<IEnumerable<Client>> SearchByNameAsync(Guid companyId, string name)
+    {
+        var searchTerm = name.Trim();
+
+        var query = _context.Clients
+            .Where(c => c.CompanyId == companyId);
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            query = query.Where(c => EF.Functions.ILike(c.Name, $"%{searchTerm}%"));
+        }
+
+        return await query
+            .OrderBy(c => c.Name)
+            .ToListAsync();
+    }
+
     public async Task<Client> AddAsync(Client client)
     {
         await _context.Clients.AddAsync(client);

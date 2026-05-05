@@ -5,7 +5,7 @@ namespace Services.DTOs.Responses;
 public class CashRegisterDto
 {
     public Guid Id { get; set; }
-    public DateTime Date { get; set; }
+    public DateOnly Date { get; set; }
     public CashRegisterStatus Status { get; set; }
     public DateTime OpenedAt { get; set; }
     public string OpenedByName { get; set; } = string.Empty;

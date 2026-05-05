@@ -11,6 +11,16 @@ public interface ITicketRepository
     Task<IEnumerable<Ticket>> GetByStatusAsync(TicketState status, Guid companyId);
     Task<IEnumerable<Ticket>> GetByClientAsync(Guid clientId, Guid companyId);
     Task<IEnumerable<Ticket>> GetByAssignedUserAsync(Guid userId, Guid companyId);
+    Task<List<Ticket>> GetFilteredAsync(
+        Guid companyId,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        Guid? clientId,
+        string? state,
+        string? type,
+        string? priority,
+        Guid? assignedToId,
+        Guid? createdById);
     Task<Ticket> AddAsync(Ticket ticket);
     Task UpdateAsync(Ticket ticket);
     Task SoftDeleteAsync(Guid id, Guid companyId, Guid deletedBy);

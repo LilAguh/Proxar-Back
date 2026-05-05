@@ -1,12 +1,15 @@
 using DataAccess.Context;
+using DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Config;
 using Models;
+using Services.Settings;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
@@ -30,11 +33,15 @@ try
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
     var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
 
+    // AfipSettings (se carga desde appsettings.json y variables de entorno .env)
+    builder.Services.Configure<AfipSettings>(builder.Configuration.GetSection("Afip"));
+
     // DbContext
     builder.Services.AddDbContext<ProxarDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
     // Repositorios y servicios
+    builder.Services.AddMemoryCache();
     builder.Services.AddRepositories();
     builder.Services.AddServices();
     builder.Services.AddAutoMapperProfiles();
@@ -80,6 +87,38 @@ try
             ValidIssuer = jwtSettings!.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+        };
+
+        // SEGURIDAD: Validar que el usuario siga activo en cada request
+        // Invalida access tokens de usuarios desactivados inmediatamente
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                var userIdClaim = context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!Guid.TryParse(userIdClaim, out var userId))
+                {
+                    context.Fail("Invalid user ID in token");
+                    return;
+                }
+
+                var companyIdClaim = context.Principal?.FindFirst("CompanyId")?.Value;
+                if (!Guid.TryParse(companyIdClaim, out var companyId))
+                {
+                    context.Fail("Invalid company ID in token");
+                    return;
+                }
+
+                var userRepository = context.HttpContext.RequestServices
+                    .GetRequiredService<IUserRepository>();
+                var user = await userRepository.GetByIdAsync(userId, companyId);
+
+                if (user == null || !user.Active)
+                {
+                    context.Fail("User account is disabled");
+                    return;
+                }
+            }
         };
     });
 
@@ -170,6 +209,9 @@ try
         });
     });
 
+    // Configurar licencia QuestPDF (Community es gratis para proyectos pequeños)
+    QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
     var app = builder.Build();
 
     if (app.Environment.IsDevelopment())
@@ -190,17 +232,20 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<ProxarDbContext>();
+        context.Database.Migrate();
 
-        if (app.Environment.IsDevelopment())
-        {
-            Log.Information("DEVELOPMENT MODE - Using DevSeeder");
-            DataAccess.Seeders.DevSeeder.SeedData(context);
-        }
-        else
-        {
-            Log.Information("PRODUCTION MODE - Using ProductionSeeder");
-            DataAccess.Seeders.ProductionSeeder.SeedData(context);
-        }
+        // SEEDER DESHABILITADO PARA PRODUCCIÓN
+        // Descomentar solo en desarrollo local si necesitás datos de prueba
+        // if (app.Environment.IsDevelopment())
+        // {
+        //     Log.Information("DEVELOPMENT MODE - Using DevSeeder");
+        //     DataAccess.Seeders.DevSeeder.SeedData(context);
+        // }
+        // else
+        // {
+        //     Log.Information("PRODUCTION MODE - Using ProductionSeeder");
+        //     DataAccess.Seeders.ProductionSeeder.SeedData(context);
+        // }
     }
 
     app.Run();
