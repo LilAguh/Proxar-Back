@@ -123,7 +123,7 @@ public class AuthService : IAuthService
             FiscalCity = request.FiscalCity,
             FiscalProvince = request.FiscalProvince,
             FiscalPostalCode = request.FiscalPostalCode,
-            StartOfActivities = request.StartOfActivities,
+            StartOfActivities = DateTime.SpecifyKind(request.StartOfActivities, DateTimeKind.Utc),
             DefaultSalesPoint = request.DefaultSalesPoint,
 
             // Contacto
@@ -265,11 +265,16 @@ public class AuthService : IAuthService
         var (plainRefreshToken, refreshTokenEntity) = GenerateRefreshToken(user);
         await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
+        // Obtener la company del usuario
+        var company = await _companyRepository.GetByIdAsync(user.CompanyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
         return new AuthResponseDto
         {
             Token = accessToken,
             RefreshToken = plainRefreshToken,
             User = _mapper.Map<UserDto>(user),
+            Company = _mapper.Map<CompanyDto>(company),
             ExpiresAt = expiresAt,
             RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt
         };

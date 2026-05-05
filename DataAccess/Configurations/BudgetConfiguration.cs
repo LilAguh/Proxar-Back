@@ -82,6 +82,10 @@ public class BudgetConfiguration : IEntityTypeConfiguration<Budget>
         builder.HasIndex(b => b.CreatedAt);
         builder.HasIndex(b => new { b.CompanyId, b.Status, b.Active });
 
+        // Composite indexes para queries frecuentes
+        builder.HasIndex(b => new { b.TicketId, b.CompanyId });
+        builder.HasIndex(b => new { b.ClientId, b.CompanyId });
+
         // Relationships
         builder.HasOne(b => b.Company)
             .WithMany()

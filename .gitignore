@@ -249,3 +249,15 @@ ModelManifest.xml
 *.db
 *.db-shm
 *.db-wal
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# AFIP certificates
+*.key
+*.csr
+*.crt
+*.pem
+*.p12
+*.pfx

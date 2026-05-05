@@ -228,7 +228,7 @@ public static class DevSeeder
             CompanyId = company.Id,
             Name = "Admin",
             Email = "admin@sagitario.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -294,7 +294,7 @@ public static class DevSeeder
             CompanyId = company2.Id,
             Name = "Carlos Vidrios",
             Email = "admin@vidriosnorte.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -307,7 +307,7 @@ public static class DevSeeder
             CompanyId = company3.Id,
             Name = "Patricia Aluminio",
             Email = "admin@alumcor.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -692,9 +692,11 @@ public static class DevSeeder
 
             // Crear items para el presupuesto
             var descriptions = budgetDescriptions[i % budgetDescriptions.Length];
-            decimal subtotalTotal = 0;
+            var tempItems = new List<BudgetItem>();
+            decimal subtotalBeforeDiscount = 0;
             decimal ivaTotal = 0;
 
+            // 1. Crear items sin descuento
             for (int j = 0; j < descriptions.Length; j++)
             {
                 var quantity = random.Next(1, 4);
@@ -704,10 +706,10 @@ public static class DevSeeder
                 var itemSubtotal = quantity * unitPrice;
                 var itemIva = itemSubtotal * (ivaPercentage / 100);
 
-                subtotalTotal += itemSubtotal;
+                subtotalBeforeDiscount += itemSubtotal;
                 ivaTotal += itemIva;
 
-                budgetItems.Add(new BudgetItem
+                tempItems.Add(new BudgetItem
                 {
                     Id = Guid.NewGuid(),
                     BudgetId = budget.Id,
@@ -721,10 +723,33 @@ public static class DevSeeder
                 });
             }
 
-            // Calcular totales del presupuesto
-            budget.Subtotal = subtotalTotal;
+            // 2. Aplicar descuento si existe (recalcular IVA sobre montos descontados)
+            var subtotalAfterDiscount = subtotalBeforeDiscount - budget.Discount;
+
+            if (budget.Discount > 0 && subtotalBeforeDiscount > 0)
+            {
+                var discountRatio = budget.Discount / subtotalBeforeDiscount;
+                ivaTotal = 0;
+
+                foreach (var item in tempItems)
+                {
+                    var itemDiscountedSubtotal = item.Subtotal * (1 - discountRatio);
+                    var itemIva = itemDiscountedSubtotal * (item.IVAPercentage / 100);
+
+                    item.Subtotal = itemDiscountedSubtotal;
+                    item.IVAAmount = itemIva;
+                    item.Total = itemDiscountedSubtotal + itemIva;
+
+                    ivaTotal += itemIva;
+                }
+            }
+
+            budgetItems.AddRange(tempItems);
+
+            // 3. Calcular totales del presupuesto
+            budget.Subtotal = subtotalAfterDiscount;
             budget.IVAAmount = ivaTotal;
-            budget.Total = subtotalTotal + ivaTotal - budget.Discount;
+            budget.Total = subtotalAfterDiscount + ivaTotal;
         }
 
         context.Budgets.AddRange(budgets);

@@ -45,6 +45,7 @@ public static class DependencyInjection
     services.AddScoped<ISubscriptionService, SubscriptionService>();
     services.AddScoped<IPdfService, PdfService>();
     services.AddScoped<IBudgetService, BudgetService>();
+    services.AddScoped<IAfipService, AfipService>();
 
     return services;
 }

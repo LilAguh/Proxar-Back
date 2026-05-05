@@ -9,6 +9,7 @@ using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using Config;
 using Models;
+using Services.Settings;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +32,9 @@ try
     // JwtSettings
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
     var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+
+    // AfipSettings (se carga desde appsettings.json y variables de entorno .env)
+    builder.Services.Configure<AfipSettings>(builder.Configuration.GetSection("Afip"));
 
     // DbContext
     builder.Services.AddDbContext<ProxarDbContext>(options =>
@@ -230,16 +234,18 @@ try
         var context = scope.ServiceProvider.GetRequiredService<ProxarDbContext>();
         context.Database.Migrate();
 
-        if (app.Environment.IsDevelopment())
-        {
-            Log.Information("DEVELOPMENT MODE - Using DevSeeder");
-            DataAccess.Seeders.DevSeeder.SeedData(context);
-        }
-        else
-        {
-            Log.Information("PRODUCTION MODE - Using ProductionSeeder");
-            DataAccess.Seeders.ProductionSeeder.SeedData(context);
-        }
+        // SEEDER DESHABILITADO PARA PRODUCCIÓN
+        // Descomentar solo en desarrollo local si necesitás datos de prueba
+        // if (app.Environment.IsDevelopment())
+        // {
+        //     Log.Information("DEVELOPMENT MODE - Using DevSeeder");
+        //     DataAccess.Seeders.DevSeeder.SeedData(context);
+        // }
+        // else
+        // {
+        //     Log.Information("PRODUCTION MODE - Using ProductionSeeder");
+        //     DataAccess.Seeders.ProductionSeeder.SeedData(context);
+        // }
     }
 
     app.Run();

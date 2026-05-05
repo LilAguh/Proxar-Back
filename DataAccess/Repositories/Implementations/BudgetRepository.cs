@@ -39,13 +39,15 @@ public class BudgetRepository : IBudgetRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<Budget>> GetByTicketIdAsync(Guid ticketId, Guid companyId)
+    public async Task<IEnumerable<Budget>> GetByTicketIdAsync(Guid ticketId, Guid companyId, int page = 1, int pageSize = 50)
     {
         return await _context.Budgets
             .Include(b => b.Items)
             .Include(b => b.CreatedBy)
             .Where(b => b.TicketId == ticketId && b.CompanyId == companyId)
             .OrderByDescending(b => b.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
     }
 

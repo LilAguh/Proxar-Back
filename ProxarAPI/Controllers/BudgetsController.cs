@@ -29,10 +29,10 @@ public class BudgetsController : BaseApiController
 
     [HttpGet("ticket/{ticketId}")]
     [ProducesResponseType(typeof(IEnumerable<BudgetDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<BudgetDto>>> GetByTicket(Guid ticketId)
+    public async Task<ActionResult<IEnumerable<BudgetDto>>> GetByTicket(Guid ticketId, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
         var companyId = GetCurrentCompanyId();
-        return Ok(await _budgetService.GetByTicketIdAsync(ticketId, companyId));
+        return Ok(await _budgetService.GetByTicketIdAsync(ticketId, companyId, page, pageSize));
     }
 
     [HttpPost("direct")]

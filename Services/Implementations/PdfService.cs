@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Configuration;
 using Models;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -9,37 +8,6 @@ namespace Services.Implementations;
 
 public class PdfService : IPdfService
 {
-    private readonly string _pdfDirectory;
-
-    public PdfService(IConfiguration configuration)
-    {
-        _pdfDirectory = configuration["PdfStorage:Directory"]
-            ?? throw new InvalidOperationException("PdfStorage:Directory no configurado en appsettings.json");
-
-        // Crear directorio si no existe
-        if (!Directory.Exists(_pdfDirectory))
-        {
-            Directory.CreateDirectory(_pdfDirectory);
-        }
-    }
-
-    public async Task<string> GenerateBudgetPdfAsync(Budget budget, string companyName)
-    {
-        var pdfBytes = GenerateBudgetPdf(budget, companyName);
-
-        var fileName = $"presupuesto_{budget.Number:D10}_{budget.Id}.pdf";
-        var companyDir = Path.Combine(_pdfDirectory, budget.CompanyId.ToString());
-
-        if (!Directory.Exists(companyDir))
-        {
-            Directory.CreateDirectory(companyDir);
-        }
-
-        var filePath = Path.Combine(companyDir, fileName);
-        await File.WriteAllBytesAsync(filePath, pdfBytes);
-
-        return filePath;
-    }
 
     public byte[] GenerateBudgetPdf(Budget budget, string companyName)
     {
