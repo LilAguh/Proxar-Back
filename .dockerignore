@@ -1,0 +1,16 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/node_modules/
+**/.git/
+**/Dockerfile
+**/.dockerignore
+**/.env
+**/.env.*
+**/logs/
+**/*.log
+**/.gitignore
+**/README.md
+**/DEPLOY_RENDER.md
+**/RENDER_ENV.md

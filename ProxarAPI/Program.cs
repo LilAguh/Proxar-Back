@@ -36,9 +36,30 @@ try
     // AfipSettings (se carga desde appsettings.json y variables de entorno .env)
     builder.Services.Configure<AfipSettings>(builder.Configuration.GetSection("Afip"));
 
-    // DbContext
+    // DbContext con soporte para DATABASE_URL de Render
     builder.Services.AddDbContext<ProxarDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    {
+        var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+        // Render da URL en formato: postgres://... (sin "ql")
+        // Convertir a formato que .NET entiende
+        if (connectionString?.StartsWith("postgres://") == true)
+        {
+            connectionString = connectionString.Replace("postgres://", "postgresql://");
+        }
+
+        if (connectionString?.StartsWith("postgresql://") == true)
+        {
+            var uri = new Uri(connectionString);
+            var user = uri.UserInfo.Split(':')[0];
+            var password = uri.UserInfo.Split(':')[1];
+
+            connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};Username={user};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        }
+
+        options.UseNpgsql(connectionString);
+    });
 
     // Repositorios y servicios
     builder.Services.AddMemoryCache();
