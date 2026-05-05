@@ -29,8 +29,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
-# Render usa la variable PORT
-ENV ASPNETCORE_URLS=http://+:${PORT}
-EXPOSE ${PORT}
+# Puerto por defecto (Render lo sobreescribe vía variable de entorno)
+ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 
 ENTRYPOINT ["dotnet", "ProxarAPI.dll"]

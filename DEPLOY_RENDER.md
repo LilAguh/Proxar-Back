@@ -55,6 +55,7 @@ AllowedOrigins__0=https://app.proxar.com.ar
 
 # ASP.NET
 ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://0.0.0.0:$PORT
 ```
 
 #### OPCIONALES (AFIP - solo si vas a usar en testing):
