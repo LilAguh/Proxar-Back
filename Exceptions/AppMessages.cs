@@ -60,4 +60,15 @@ public static class AppMessages
     {
         public const string NotFound = "Suscripción no encontrada";
     }
+
+    public static class Budget
+    {
+        public const string NotFound = "Presupuesto no encontrado";
+        public const string CreateError = "Error al crear el presupuesto";
+        public const string UpdateError = "Error al actualizar el presupuesto";
+        public const string DeleteError = "Error al eliminar el presupuesto";
+        public const string PdfGenerationError = "Error al generar el PDF del presupuesto";
+        public const string NoItems = "El presupuesto debe tener al menos un item";
+        public const string InvalidTotal = "Los totales del presupuesto no son válidos";
+    }
 }

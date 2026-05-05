@@ -228,7 +228,7 @@ public static class DevSeeder
             CompanyId = company.Id,
             Name = "Admin",
             Email = "admin@sagitario.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -294,7 +294,7 @@ public static class DevSeeder
             CompanyId = company2.Id,
             Name = "Carlos Vidrios",
             Email = "admin@vidriosnorte.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -307,7 +307,7 @@ public static class DevSeeder
             CompanyId = company3.Id,
             Name = "Patricia Aluminio",
             Email = "admin@alumcor.com",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin1234"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("password123"),
             Role = UserRole.Admin,
             Active = true,
             CreatedAt = DateTime.UtcNow,
@@ -597,6 +597,164 @@ public static class DevSeeder
 
         context.BoxMovements.AddRange(movements);
         Console.WriteLine("✅ 60 movimientos de caja creados");
+
+        // ============================================
+        // 7. PRESUPUESTOS (para tickets Presupuestado, Aprobado, En Proceso)
+        // ============================================
+        var budgets = new List<Budget>();
+        var budgetItems = new List<BudgetItem>();
+
+        // Obtener tickets que necesitan presupuestos (Presupuestado, Aprobado, EnProceso)
+        var ticketsConPresupuesto = tickets
+            .Where(t => t.Status == TicketState.Presupuestado ||
+                       t.Status == TicketState.Aprobado ||
+                       t.Status == TicketState.EnProceso)
+            .Take(10) // Hasta 10 presupuestos
+            .ToList();
+
+        // Si no hay suficientes, cambiar algunos tickets
+        if (ticketsConPresupuesto.Count < 10)
+        {
+            var ticketsAdicionales = tickets
+                .Where(t => t.Status != TicketState.Completado &&
+                           t.Status != TicketState.Descartado &&
+                           !ticketsConPresupuesto.Contains(t))
+                .Take(10 - ticketsConPresupuesto.Count)
+                .ToList();
+
+            // Cambiar estados de manera lógica
+            for (int i = 0; i < ticketsAdicionales.Count; i++)
+            {
+                if (i < 3)
+                    ticketsAdicionales[i].Status = TicketState.Presupuestado;
+                else if (i < 6)
+                    ticketsAdicionales[i].Status = TicketState.Aprobado;
+                else
+                    ticketsAdicionales[i].Status = TicketState.EnProceso;
+
+                ticketsConPresupuesto.Add(ticketsAdicionales[i]);
+            }
+        }
+
+        var budgetDescriptions = new[]
+        {
+            new[] { "Vidrio templado 6mm", "Mano de obra instalación", "Herrajes acero inoxidable" },
+            new[] { "Aluminio anodizado perfil 40x40", "Vidrio DVH 4+9+4", "Kit herrajes ventana", "Instalación y colocación" },
+            new[] { "Espejo 4mm con marco", "Pegamento especial espejo", "Mano de obra" },
+            new[] { "Mampara corrediza 2 hojas", "Vidrio templado 8mm", "Herrajes corrediza premium", "Instalación" },
+            new[] { "Abertura aluminio blanco 150x120", "Vidrio DVH color bronce", "Mosquitero incluido", "Colocación" }
+        };
+
+        for (int i = 0; i < ticketsConPresupuesto.Count; i++)
+        {
+            var ticket = ticketsConPresupuesto[i];
+            var client = clients.First(c => c.Id == ticket.ClientId);
+
+            // Determinar status del presupuesto según estado del ticket
+            BudgetStatus budgetStatus;
+            if (ticket.Status == TicketState.Presupuestado)
+            {
+                // Presupuestos en distintos estados
+                budgetStatus = i < 2 ? BudgetStatus.Sent : (i == 2 ? BudgetStatus.Viewed : BudgetStatus.Draft);
+            }
+            else // Aprobado o EnProceso
+            {
+                budgetStatus = BudgetStatus.Approved;
+            }
+
+            var budget = new Budget
+            {
+                Id = Guid.NewGuid(),
+                CompanyId = company.Id,
+                TicketId = ticket.Id,
+                ClientId = client.Id,
+                Number = i + 1,
+                Status = budgetStatus,
+
+                // Snapshot del cliente
+                ClientName = client.Name,
+                ClientPhone = client.Phone,
+                ClientEmail = client.Email,
+                ClientAddress = client.Address,
+
+                ValidUntil = DateTime.UtcNow.AddDays(15),
+                ValidDays = 15,
+
+                Discount = i == 2 ? 5000m : 0m, // Un presupuesto con descuento
+
+                CreatedAt = DateTime.UtcNow.AddDays(-random.Next(5, 20)),
+                CreatedById = users[random.Next(users.Length)].Id,
+
+                PdfUrl = null // Se genera on-demand al solicitar el PDF
+            };
+
+            budgets.Add(budget);
+
+            // Crear items para el presupuesto
+            var descriptions = budgetDescriptions[i % budgetDescriptions.Length];
+            var tempItems = new List<BudgetItem>();
+            decimal subtotalBeforeDiscount = 0;
+            decimal ivaTotal = 0;
+
+            // 1. Crear items sin descuento
+            for (int j = 0; j < descriptions.Length; j++)
+            {
+                var quantity = random.Next(1, 4);
+                var unitPrice = random.Next(5000, 50000);
+                var ivaPercentage = 21m;
+
+                var itemSubtotal = quantity * unitPrice;
+                var itemIva = itemSubtotal * (ivaPercentage / 100);
+
+                subtotalBeforeDiscount += itemSubtotal;
+                ivaTotal += itemIva;
+
+                tempItems.Add(new BudgetItem
+                {
+                    Id = Guid.NewGuid(),
+                    BudgetId = budget.Id,
+                    Quantity = quantity,
+                    Description = descriptions[j],
+                    UnitPrice = unitPrice,
+                    IVAPercentage = ivaPercentage,
+                    Subtotal = itemSubtotal,
+                    IVAAmount = itemIva,
+                    Total = itemSubtotal + itemIva
+                });
+            }
+
+            // 2. Aplicar descuento si existe (recalcular IVA sobre montos descontados)
+            var subtotalAfterDiscount = subtotalBeforeDiscount - budget.Discount;
+
+            if (budget.Discount > 0 && subtotalBeforeDiscount > 0)
+            {
+                var discountRatio = budget.Discount / subtotalBeforeDiscount;
+                ivaTotal = 0;
+
+                foreach (var item in tempItems)
+                {
+                    var itemDiscountedSubtotal = item.Subtotal * (1 - discountRatio);
+                    var itemIva = itemDiscountedSubtotal * (item.IVAPercentage / 100);
+
+                    item.Subtotal = itemDiscountedSubtotal;
+                    item.IVAAmount = itemIva;
+                    item.Total = itemDiscountedSubtotal + itemIva;
+
+                    ivaTotal += itemIva;
+                }
+            }
+
+            budgetItems.AddRange(tempItems);
+
+            // 3. Calcular totales del presupuesto
+            budget.Subtotal = subtotalAfterDiscount;
+            budget.IVAAmount = ivaTotal;
+            budget.Total = subtotalAfterDiscount + ivaTotal;
+        }
+
+        context.Budgets.AddRange(budgets);
+        context.BudgetItems.AddRange(budgetItems);
+        Console.WriteLine($"✅ {budgets.Count} presupuestos creados con {budgetItems.Count} items (Presupuestado, Aprobado, En Proceso)");
 
         // ============================================
         // GUARDAR TODO

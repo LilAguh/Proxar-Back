@@ -109,9 +109,26 @@ public class AuthService : IAuthService
         {
             Name = request.CompanyName,
             Slug = normalizedSlug,
+            LegalName = request.LegalName ?? request.CompanyName,
             LogoUrl = request.LogoUrl,
             Active = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = request.CUIT,
+            IVA = request.IVA,
+            IIBB = request.IIBB,
+            FiscalAddress = request.FiscalAddress,
+            FiscalCity = request.FiscalCity,
+            FiscalProvince = request.FiscalProvince,
+            FiscalPostalCode = request.FiscalPostalCode,
+            StartOfActivities = DateTime.SpecifyKind(request.StartOfActivities, DateTimeKind.Utc),
+            DefaultSalesPoint = request.DefaultSalesPoint,
+
+            // Contacto
+            Email = request.CompanyEmail,
+            Phone = request.Phone
         };
 
         var createdCompany = await _companyRepository.CreateAsync(company);
@@ -248,11 +265,16 @@ public class AuthService : IAuthService
         var (plainRefreshToken, refreshTokenEntity) = GenerateRefreshToken(user);
         await _refreshTokenRepository.AddAsync(refreshTokenEntity);
 
+        // Obtener la company del usuario
+        var company = await _companyRepository.GetByIdAsync(user.CompanyId)
+            ?? throw new NotFoundException(AppMessages.Company.NotFound);
+
         return new AuthResponseDto
         {
             Token = accessToken,
             RefreshToken = plainRefreshToken,
             User = _mapper.Map<UserDto>(user),
+            Company = _mapper.Map<CompanyDto>(company),
             ExpiresAt = expiresAt,
             RefreshTokenExpiresAt = refreshTokenEntity.ExpiresAt
         };

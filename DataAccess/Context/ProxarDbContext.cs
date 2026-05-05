@@ -29,6 +29,8 @@ public class ProxarDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
     public DbSet<Subscription> Subscriptions { get; set; }
     public DbSet<SubscriptionPayment> SubscriptionPayments { get; set; }
+    public DbSet<Budget> Budgets { get; set; }
+    public DbSet<BudgetItem> BudgetItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +48,8 @@ public class ProxarDbContext : DbContext
         modelBuilder.ApplyConfiguration(new AccountConfiguration());
         modelBuilder.ApplyConfiguration(new BoxMovementConfiguration());
         modelBuilder.ApplyConfiguration(new TicketHistoryConfiguration());
+        modelBuilder.ApplyConfiguration(new BudgetConfiguration());
+        modelBuilder.ApplyConfiguration(new BudgetItemConfiguration());
 
         // ============================================
         // ENCRYPTION (Value Converters for sensitive fields)

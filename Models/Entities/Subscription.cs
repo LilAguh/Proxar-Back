@@ -6,7 +6,7 @@ public class Subscription
 {
     // Identificación
     public Guid Id { get; set; }
-    public byte[] RowVersion { get; set; } = [];
+    public byte[]? RowVersion { get; set; } = [];
     public Guid CompanyId { get; set; }
 
     // Plan y estado

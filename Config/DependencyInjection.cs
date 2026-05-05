@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ICashRegisterRepository, CashRegisterRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<IBudgetRepository, BudgetRepository>();
 
         return services;
     }
@@ -42,6 +43,9 @@ public static class DependencyInjection
     services.AddScoped<ICashRegisterService, CashRegisterService>();
     services.AddScoped<IReportService, ReportService>();
     services.AddScoped<ISubscriptionService, SubscriptionService>();
+    services.AddScoped<IPdfService, PdfService>();
+    services.AddScoped<IBudgetService, BudgetService>();
+    services.AddScoped<IAfipService, AfipService>();
 
     return services;
 }
