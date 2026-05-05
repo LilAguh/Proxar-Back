@@ -50,8 +50,11 @@ JwtSettings__RefreshTokenExpirationDays=30
 # Encryption (usa la clave generada abajo)
 Encryption__Key=2990225773f65d51cafc46949e4ec398c640a6599abc604a2c127b62f61c43c3
 
-# CORS (actualizar cuando tengas la URL del frontend)
-AllowedOrigins__0=https://app.proxar.com.ar
+# CORS
+AllowedOrigins__0=http://localhost:5173
+AllowedOrigins__1=http://localhost:3000
+AllowedOrigins__2=https://app.proxar.com.ar
+AllowedOrigins__3=https://proxar-cyan.vercel.app
 
 # ASP.NET
 ASPNETCORE_ENVIRONMENT=Production
