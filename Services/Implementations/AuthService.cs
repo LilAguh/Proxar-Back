@@ -109,9 +109,26 @@ public class AuthService : IAuthService
         {
             Name = request.CompanyName,
             Slug = normalizedSlug,
+            LegalName = request.LegalName ?? request.CompanyName,
             LogoUrl = request.LogoUrl,
             Active = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+
+            // Datos fiscales
+            CUIT = request.CUIT,
+            IVA = request.IVA,
+            IIBB = request.IIBB,
+            FiscalAddress = request.FiscalAddress,
+            FiscalCity = request.FiscalCity,
+            FiscalProvince = request.FiscalProvince,
+            FiscalPostalCode = request.FiscalPostalCode,
+            StartOfActivities = request.StartOfActivities,
+            DefaultSalesPoint = request.DefaultSalesPoint,
+
+            // Contacto
+            Email = request.CompanyEmail,
+            Phone = request.Phone
         };
 
         var createdCompany = await _companyRepository.CreateAsync(company);
