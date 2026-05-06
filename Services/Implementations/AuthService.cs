@@ -152,7 +152,7 @@ public class AuthService : IAuthService
 
         var createdUser = await _userRepository.AddAsync(user);
 
-        // Crear cuentas por defecto para la empresa
+        // Crear cuentas por defecto para la empresa (solo las básicas)
         var defaultAccounts = new[]
         {
             new Account
@@ -170,16 +170,6 @@ public class AuthService : IAuthService
                 CompanyId = createdCompany.Id,
                 Name = "Banco",
                 Type = AccountType.Banco,
-                CurrentBalance = 0,
-                Active = true,
-                CreatedAt = DateTime.UtcNow,
-                ModifiedAt = DateTime.UtcNow
-            },
-            new Account
-            {
-                CompanyId = createdCompany.Id,
-                Name = "Mercado Pago",
-                Type = AccountType.MercadoPago,
                 CurrentBalance = 0,
                 Active = true,
                 CreatedAt = DateTime.UtcNow,
