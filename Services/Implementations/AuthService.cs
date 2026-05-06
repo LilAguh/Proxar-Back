@@ -20,6 +20,7 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly ICompanyRepository _companyRepository;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
+    private readonly IAccountRepository _accountRepository;
     private readonly IMapper _mapper;
     private readonly JwtSettings _jwtSettings;
 
@@ -27,12 +28,14 @@ public class AuthService : IAuthService
         IUserRepository userRepository,
         ICompanyRepository companyRepository,
         IRefreshTokenRepository refreshTokenRepository,
+        IAccountRepository accountRepository,
         IMapper mapper,
         IOptions<JwtSettings> jwtSettings)
     {
         _userRepository = userRepository;
         _companyRepository = companyRepository;
         _refreshTokenRepository = refreshTokenRepository;
+        _accountRepository = accountRepository;
         _mapper = mapper;
         _jwtSettings = jwtSettings.Value;
     }
@@ -148,6 +151,47 @@ public class AuthService : IAuthService
         };
 
         var createdUser = await _userRepository.AddAsync(user);
+
+        // Crear cuentas por defecto para la empresa
+        var defaultAccounts = new[]
+        {
+            new Account
+            {
+                CompanyId = createdCompany.Id,
+                Name = "Efectivo",
+                Type = AccountType.Efectivo,
+                CurrentBalance = 0,
+                Active = true,
+                CreatedAt = DateTime.UtcNow,
+                ModifiedAt = DateTime.UtcNow
+            },
+            new Account
+            {
+                CompanyId = createdCompany.Id,
+                Name = "Banco",
+                Type = AccountType.Banco,
+                CurrentBalance = 0,
+                Active = true,
+                CreatedAt = DateTime.UtcNow,
+                ModifiedAt = DateTime.UtcNow
+            },
+            new Account
+            {
+                CompanyId = createdCompany.Id,
+                Name = "Mercado Pago",
+                Type = AccountType.MercadoPago,
+                CurrentBalance = 0,
+                Active = true,
+                CreatedAt = DateTime.UtcNow,
+                ModifiedAt = DateTime.UtcNow
+            }
+        };
+
+        foreach (var account in defaultAccounts)
+        {
+            await _accountRepository.AddAsync(account);
+        }
+
         return await BuildAuthResponseAsync(createdUser);
     }
 
